@@ -1,7 +1,7 @@
 {
   "name": "roofingcrm",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Single-user desktop CRM for roofing operations.",
   "author": "daziu",
   "main": "electron/main.cjs",
