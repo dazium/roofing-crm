@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">RoofingCRM</string>
+    <string name="title_activity_main">RoofingCRM</string>
+    <string name="package_name">com.daziu.roofingcrm</string>
+    <string name="custom_url_scheme">com.daziu.roofingcrm</string>
+</resources>

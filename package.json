@@ -1,0 +1,79 @@
+{
+  "name": "roofingcrm",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Single-user desktop CRM for roofing operations.",
+  "author": "daziu",
+  "main": "electron/main.cjs",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:desktop": "vite --host 127.0.0.1 --port 4173 --strictPort",
+    "build": "tsc -b && vite build",
+    "android:debug": "scripts\\android-debug.cmd",
+    "android:release": "scripts\\android-release.cmd",
+    "desktop:dev": "concurrently --success first \"npm run dev:desktop\" \"wait-on tcp:127.0.0.1:4173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:4173 electron .\"",
+    "desktop:build": "npm run build && electron-builder --win nsis",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@capacitor-community/sqlite": "^8.0.1",
+    "@capacitor/android": "^8.2.0",
+    "@capacitor/cli": "^8.2.0",
+    "@capacitor/core": "^8.2.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/node": "^24.12.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.0",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^41.0.3",
+    "electron-builder": "^26.8.1",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.4.0",
+    "puppeteer": "^23.0.0",
+    "sqlite3": "^5.1.7",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.56.1",
+    "vite": "^8.0.0",
+    "wait-on": "^9.0.4"
+  },
+  "build": {
+    "appId": "com.daziu.roofingcrm.desktop",
+    "productName": "RoofingCRM",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "verifyUpdateCodeSignature": false,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "RoofingCRM"
+    }
+  }
+}

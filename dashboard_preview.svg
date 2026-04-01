@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" style="font-family:Arial,Helvetica,sans-serif">
+  <defs>
+    <style>
+      .bg { fill:#0b0f14; }
+      .panel { fill:#111820; stroke:#2a2f3a; stroke-width:1; }
+      .title { font-weight:700; fill:#e9f0f7; font-size:22px }
+      .sub { fill:#97a6b8; font-size:12px }
+      .card { fill:#1a2533; stroke:#2f3a56; stroke-width:1; }
+      .card-title { font-size:13px; font-weight:700; fill:#e6f0ff; }
+      .value { font-size:28px; font-weight:800; fill:#ffffff; }
+      .muted { fill:#8ea3b8; font-size:12px; }
+      .bar { fill:#2b9af3; }
+      .bar2 { fill:#8ad2a6; }
+      .table { fill:#141b26; stroke:#2b3240; }
+      .link { fill:#a9d1ff; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect class="bg" x="0" y="0" width="1200" height="700"/>
+
+  <!-- Left nav rail -->
+  <rect class="panel" x="0" y="0" width="210" height="700" rx="6"/>
+  <text x="105" y="60" text-anchor="middle" class="title">RTR</text>
+  <text x="105" y="90" text-anchor="middle" class="sub">Demo Dashboard</text>
+
+  <g transform="translate(0,120)">
+    <rect class="panel" x="10" y="0" width="190" height="38" rx="6"/>
+    <text x="105" y="24" text-anchor="middle" class="sub">Leads</text>
+  </g>
+  <g transform="translate(0,170)">
+    <rect class="panel" x="10" y="0" width="190" height="38" rx="6"/>
+    <text x="105" y="24" text-anchor="middle" class="sub">Inspections</text>
+  </g>
+  <g transform="translate(0,220)">
+    <rect class="panel" x="10" y="0" width="190" height="38" rx="6"/>
+    <text x="105" y="24" text-anchor="middle" class="sub">Photos</text>
+  </g>
+  <g transform="translate(0,270)">
+    <rect class="panel" x="10" y="0" width="190" height="38" rx="6"/>
+    <text x="105" y="24" text-anchor="middle" class="sub">Planes</text>
+  </g>
+  <g transform="translate(0,320)">
+    <rect class="panel" x="10" y="0" width="190" height="38" rx="6"/>
+    <text x="105" y="24" text-anchor="middle" class="sub">Proposals</text>
+  </g>
+
+  <!-- Header -->
+  <rect class="panel" x="220" y="0" width="980" height="60" rx="8"/>
+  <text x="670" y="34" class="title" text-anchor="middle">RTR Demo Prototype Dashboard</text>
+  <text x="670" y="52" text-anchor="middle" class="muted">Lead → Inspection → Photos → Planes → Proposals → Jobs / Invoices</text>
+
+  <!-- KPI strip -->
+  <g transform="translate(230,90)">
+    <rect class="card" x="0" y="0" width="230" height="90" rx="12"/>
+    <text x="115" y="28" text-anchor="middle" class="card-title">Leads</text>
+    <text x="115" y="58" text-anchor="middle" class="value">12</text>
+    <text x="115" y="78" text-anchor="middle" class="muted">new this week</text>
+
+    <rect class="card" x="250" y="0" width="230" height="90" rx="12"/>
+    <text x="365" y="28" text-anchor="middle" class="card-title">Inspections</text>
+    <text x="365" y="58" text-anchor="middle" class="value">7</text>
+    <text x="365" y="78" text-anchor="middle" class="muted">scheduled</text>
+
+    <rect class="card" x="500" y="0" width="230" height="90" rx="12"/>
+    <text x="615" y="28" text-anchor="middle" class="card-title">Photos</text>
+    <text x="615" y="58" text-anchor="middle" class="value">34</text>
+    <text x="615" y="78" text-anchor="middle" class="muted">uploaded</text>
+  </g>
+
+  <!-- Planes preview -->
+  <g transform="translate(230,210)">
+    <rect class="panel" x="0" y="0" width="740" height="210" rx="12"/>
+    <text x="370" y="26" text-anchor="middle" class="card-title" fill="#e8f0ff">Roof Planes (Per-slope)</text>
+
+    <g transform="translate(20,50)">
+      <rect class="table" x="0" y="0" width="230" height="28" rx="6" fill="#1e2a3a"/>
+      <text x="115" y="20" text-anchor="middle" class="sub">Plane A — Main slope</text>
+    </g>
+    <g transform="translate(270,50)">
+      <rect class="table" x="0" y="0" width="230" height="28" rx="6" fill="#1e2a3a"/>
+      <text x="115" y="20" text-anchor="middle" class="sub">Plane B — Rear</text>
+    </g>
+    <g transform="translate(520,50)">
+      <rect class="table" x="0" y="0" width="230" height="28" rx="6" fill="#1e2a3a"/>
+      <text x="115" y="20" text-anchor="middle" class="sub">Plane C — Garage</text>
+    </g>
+
+    <g transform="translate(20,110)">
+      <rect class="bar" x="0" y="0" width="140" height="12" rx="6"/>
+      <rect class="bar2" x="150" y="0" width="200" height="12" rx="6"/>
+    </g>
+  </g>
+
+  <!-- Proposal preview -->
+  <g transform="translate(230,440)">
+    <rect class="panel" x="0" y="0" width="740" height="170" rx="12"/>
+    <text x="370" y="22" text-anchor="middle" class="card-title" fill="#e8f0ff">Proposal Preview</text>
+    <text x="40" y="60" class="muted">Line items, subtotal, tax, total</text>
+    <rect class="table" x="40" y="78" width="660" height="28" rx="6" fill="#1a2540"/>
+    <text x="60" y="98" font-family="monospace" fill="#e8f0ff">Shingle package — 30 squares @ $125</text>
+  </g>
+
+  <!-- Jobs / Invoices -->
+  <g transform="translate(230,640)">
+    <rect class="panel" x="0" y="0" width="520" height="80" rx="12"/>
+    <text x="260" y="26" text-anchor="middle" class="card-title" fill="#e8f0ff">Jobs</text>
+    <text x="260" y="56" text-anchor="middle" class="muted">In-progress 2 / billed 1</text>
+  </g>
+
+  <!-- Legend / footer note -->
+  <text x="600" y="690" text-anchor="middle" class="muted">Demo: generic RTR Prototype v1 (no PII)</text>
+</svg>

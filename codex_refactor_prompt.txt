@@ -1,0 +1,32 @@
+You are refactoring a live React + TypeScript + Vite app at C:\Users\daziu\Desktop\Apps\RoofingCRM.
+
+Goal:
+Refactor the current giant src/App.tsx into a cleaner modular structure WITHOUT changing the app's visible behavior in any major way.
+
+Requirements:
+1. Inspect the current app first.
+2. Split code into multiple files under src/, such as:
+   - components/
+   - sections/
+   - lib/ or utils/
+   - types/
+   - data/
+   as appropriate.
+3. Keep the current features working:
+   - dashboard
+   - customers CRM flow
+   - jobs flow
+   - inspections
+   - estimates
+   - invoices
+   - settings
+4. Preserve existing styling unless a small supporting CSS change is needed.
+5. Make the architecture easier to extend next.
+6. After refactor, run npm.cmd run build and fix any errors.
+7. Do not add a backend. Stay within the current frontend project.
+8. Prefer readable, practical code over overengineering.
+
+Deliverables:
+- a modularized src tree
+- successful production build
+- brief summary of what changed
