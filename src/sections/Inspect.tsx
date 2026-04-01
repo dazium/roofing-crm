@@ -198,7 +198,7 @@ export const Inspect: React.FC<InspectProps> = ({
                   </label>
                 </div>
                 <div className="split-grid">
-                  <label className="field">
+                  <label className="field field-short">
                     <span>Damage type</span>
                     <select
                       value={inspectionForm.damageType}
@@ -212,7 +212,7 @@ export const Inspect: React.FC<InspectProps> = ({
                       <option>Storm Damage</option>
                     </select>
                   </label>
-                  <label className="field">
+                  <label className="field field-short">
                     <span>Urgency</span>
                     <select
                       value={inspectionForm.urgency}
@@ -233,7 +233,7 @@ export const Inspect: React.FC<InspectProps> = ({
                   <span>Enter base plan measurements. Pitch and waste are applied in roof math.</span>
                 </div>
                 <div className="calculator-row">
-                  <label className="field">
+                  <label className="field field-short">
                     <span>Length (ft)</span>
                     <input
                       type="number"
@@ -243,7 +243,7 @@ export const Inspect: React.FC<InspectProps> = ({
                       }}
                     />
                   </label>
-                  <label className="field">
+                  <label className="field field-short">
                     <span>Width (ft)</span>
                     <input
                       type="number"
@@ -263,7 +263,7 @@ export const Inspect: React.FC<InspectProps> = ({
                   Length x width fills the <strong>Base plan squares</strong> field automatically. The roof math panel then applies pitch and waste to produce roofing quantities.
                 </div>
                 <div className="measure-grid">
-                  <label className="field">
+                  <label className="field field-short">
                     <span>Base plan squares</span>
                     <input
                       type="number"
@@ -271,7 +271,7 @@ export const Inspect: React.FC<InspectProps> = ({
                       onChange={(event) => setInspectionForm({ ...inspectionForm, squares: Number(event.target.value) })}
                     />
                   </label>
-                  <label className="field">
+                  <label className="field field-short">
                     <span>Ridge length</span>
                     <input
                       type="number"
@@ -279,7 +279,7 @@ export const Inspect: React.FC<InspectProps> = ({
                       onChange={(event) => setInspectionForm({ ...inspectionForm, ridgeLength: Number(event.target.value) })}
                     />
                   </label>
-                  <label className="field">
+                  <label className="field field-short">
                     <span>Valley length</span>
                     <input
                       type="number"
@@ -287,7 +287,7 @@ export const Inspect: React.FC<InspectProps> = ({
                       onChange={(event) => setInspectionForm({ ...inspectionForm, valleyLength: Number(event.target.value) })}
                     />
                   </label>
-                  <label className="field">
+                  <label className="field field-short">
                     <span>Eaves length</span>
                     <input
                       type="number"
@@ -295,7 +295,7 @@ export const Inspect: React.FC<InspectProps> = ({
                       onChange={(event) => setInspectionForm({ ...inspectionForm, eavesLength: Number(event.target.value) })}
                     />
                   </label>
-                  <label className="field">
+                  <label className="field field-short">
                     <span>Rake length</span>
                     <input
                       type="number"
@@ -303,7 +303,7 @@ export const Inspect: React.FC<InspectProps> = ({
                       onChange={(event) => setInspectionForm({ ...inspectionForm, rakeLength: Number(event.target.value) })}
                     />
                   </label>
-                  <label className="field">
+                  <label className="field field-short">
                     <span>Waste factor %</span>
                     <input
                       type="number"
@@ -430,7 +430,7 @@ export const Inspect: React.FC<InspectProps> = ({
                 </div>
               </div>
               <div className="split-grid">
-                <label className="field">
+                <label className="field field-compact">
                   <span>Photo category</span>
                   <select
                     value={photoCategory}

@@ -302,7 +302,7 @@ export const Estimates: React.FC<EstimatesProps> = ({
                   <span>These numbers describe the roof size that pricing is based on. Starter and drip edge are both derived from the same perimeter edge math (eaves + rakes).</span>
                 </div>
                 <div className="split-grid">
-                  <label className="field">
+                  <label className="field field-short">
                     <span>Slope-adjusted roof area (sq ft)</span>
                     <input
                       type="number"
@@ -310,7 +310,7 @@ export const Estimates: React.FC<EstimatesProps> = ({
                       onChange={(e) => setNumberField('squareFeet', Number(e.target.value))}
                     />
                   </label>
-                  <label className="field">
+                  <label className="field field-short">
                     <span>Slope-adjusted roof area (squares)</span>
                     <input
                       type="number"
@@ -327,17 +327,17 @@ export const Estimates: React.FC<EstimatesProps> = ({
                   <span>Line items drive the subtotal. Overhead, markup, tax, and deposit are applied on top.</span>
                 </div>
                 <div className="split-grid">
-                  <label className="field">
+                  <label className="field field-short">
                     <span>Material total</span>
                     <input type="number" value={estimateForm.materialCost} readOnly />
                   </label>
-                  <label className="field">
+                  <label className="field field-short">
                     <span>Labour total</span>
                     <input type="number" value={estimateForm.laborCost} readOnly />
                   </label>
                 </div>
                 <div className="split-grid">
-                  <label className="field">
+                  <label className="field field-short">
                     <span>Overhead</span>
                     <input
                       type="number"
@@ -346,7 +346,7 @@ export const Estimates: React.FC<EstimatesProps> = ({
                       onChange={(e) => setNumberField('overheadCost', Number(e.target.value))}
                     />
                   </label>
-                  <label className="field">
+                  <label className="field field-short">
                     <span>Markup %</span>
                     <input
                       type="number"
@@ -358,7 +358,7 @@ export const Estimates: React.FC<EstimatesProps> = ({
                   </label>
                 </div>
                 <div className="split-grid">
-                  <label className="field">
+                  <label className="field field-short">
                     <span>Tax %</span>
                     <input
                       type="number"
@@ -368,7 +368,7 @@ export const Estimates: React.FC<EstimatesProps> = ({
                       onChange={(e) => setNumberField('taxRate', Number(e.target.value))}
                     />
                   </label>
-                  <label className="field">
+                  <label className="field field-short">
                     <span>Deposit %</span>
                     <input
                       type="number"

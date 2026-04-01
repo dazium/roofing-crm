@@ -291,14 +291,14 @@ export const Invoices: React.FC<InvoicesProps> = ({
               </div>
             </div>
             <div className="split-grid">
-              <label className="field">
+              <label className="field field-compact">
                 <span>Invoice number</span>
                 <input
                   value={invoiceForm.invoiceNumber}
                   onChange={(event) => setInvoiceForm({ ...invoiceForm, invoiceNumber: event.target.value })}
                 />
               </label>
-              <label className="field">
+              <label className="field field-compact">
                 <span>Status</span>
                 <select
                   value={invoiceForm.status}
@@ -313,7 +313,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
               </label>
             </div>
             <div className="split-grid">
-              <label className="field">
+              <label className="field field-short">
                 <span>Amount</span>
                 <input
                   type="number"
@@ -322,7 +322,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
                   onChange={(event) => setInvoiceForm({ ...invoiceForm, amount: Number(event.target.value) })}
                 />
               </label>
-              <label className="field">
+              <label className="field field-short">
                 <span>Amount received</span>
                 <input
                   type="number"
@@ -333,7 +333,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
               </label>
             </div>
             <div className="split-grid">
-              <label className="field">
+              <label className="field field-compact">
                 <span>Due date</span>
                 <input
                   type="date"
@@ -343,7 +343,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
               </label>
             </div>
             <div className="split-grid">
-              <label className="field">
+              <label className="field field-compact">
                 <span>Issued date</span>
                 <input
                   type="date"
@@ -351,7 +351,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
                   onChange={(event) => setInvoiceForm({ ...invoiceForm, issuedDate: event.target.value })}
                 />
               </label>
-              <label className="field">
+              <label className="field field-compact">
                 <span>Paid date</span>
                 <input
                   type="date"
@@ -547,7 +547,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
               </div>
               <div className="summary-box">
                 <div className="customer-detail-grid">
-                  <label className="field">
+                  <label className="field field-short">
                     <span>Record payment</span>
                     <input type="number" min={0} value={paymentDraft || ''} onChange={(event) => setPaymentDraft(Number(event.target.value) || 0)} />
                   </label>

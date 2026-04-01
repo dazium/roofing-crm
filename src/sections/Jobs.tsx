@@ -212,7 +212,7 @@ export const Jobs: React.FC<JobsProps> = ({
                 />
               </label>
               <div className="split-grid">
-                <label className="field">
+                <label className="field field-compact">
                   <span>Status</span>
                   <input
                     value={jobForm.status}
@@ -220,7 +220,7 @@ export const Jobs: React.FC<JobsProps> = ({
                     list="job-status-options"
                   />
                 </label>
-                <label className="field">
+                <label className="field field-compact">
                   <span>Priority</span>
                   <input
                     value={jobForm.priority}
@@ -229,7 +229,7 @@ export const Jobs: React.FC<JobsProps> = ({
                   />
                 </label>
               </div>
-              <label className="field">
+              <label className="field field-compact">
                 <span>Scheduled date</span>
                 <input
                   type="date"
@@ -443,16 +443,16 @@ export const Jobs: React.FC<JobsProps> = ({
                     <input value={jobEditForm.title} onChange={(event) => setJobEditForm({ ...jobEditForm, title: event.target.value })} />
                   </label>
                   <div className="split-grid">
-                    <label className="field">
+                    <label className="field field-compact">
                       <span>Status</span>
                       <input value={jobEditForm.status} onChange={(event) => setJobEditForm({ ...jobEditForm, status: event.target.value as JobStatus })} list="job-status-options" />
                     </label>
-                    <label className="field">
+                    <label className="field field-compact">
                       <span>Priority</span>
                       <input value={jobEditForm.priority} onChange={(event) => setJobEditForm({ ...jobEditForm, priority: event.target.value as JobPriority })} list="job-priority-options" />
                     </label>
                   </div>
-                  <label className="field">
+                  <label className="field field-compact">
                     <span>Scheduled date</span>
                     <input type="date" value={jobEditForm.scheduledFor} onChange={(event) => setJobEditForm({ ...jobEditForm, scheduledFor: event.target.value })} />
                   </label>
