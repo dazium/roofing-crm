@@ -33,7 +33,7 @@ function nextInvoiceNumber(invoices: Invoice[]) {
     const number = match ? Number(match[1]) : 2000;
     return Math.max(highest, number);
   }, 2000);
-  return `RTR-INV-${max + 1}`;
+  return `INV-${max + 1}`;
 }
 
 export const Invoices: React.FC<InvoicesProps> = ({

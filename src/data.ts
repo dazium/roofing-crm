@@ -1,6 +1,15 @@
 import type { AppData } from './types'
 
 export const seedData: AppData = {
+  companyProfile: {
+    name: 'Your Roofing Company',
+    shortName: 'YRC',
+    tagline: 'Add your company details in Settings',
+    city: '',
+    phone: '',
+    email: '',
+    website: '',
+  },
   customers: [
     { id: 'cust-1', name: 'Jennifer Mullins', phone: '519-555-1001', email: 'jennifer@example.com', address: '123 Maple Ridge Dr, Windsor, ON', notes: 'Possible full replacement. Wants quote this week.', leadStatus: 'Inspection Scheduled', source: 'Facebook' },
     { id: 'cust-2', name: 'Mark Pitre', phone: '519-555-1002', email: 'mark@example.com', address: '88 Seacliff Dr, Leamington, ON', notes: 'Leak around vent stack. Asked about insurance.', leadStatus: 'Estimate Sent', source: 'Referral' },

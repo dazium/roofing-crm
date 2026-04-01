@@ -1,10 +1,11 @@
 import type { StorageMeta, StorageDriver } from '../storage';
-import type { AppData, MaterialPriceSetting } from '../types';
-import { companyProfile, openEmailClient, openExternalUrl, openPhoneDialer } from '../lib';
+import type { AppData, CompanyProfile, MaterialPriceSetting } from '../types';
+import { companyDisplayName, companyShortName, companyTagline, openEmailClient, openExternalUrl, openPhoneDialer } from '../lib';
 
 interface SettingsProps {
   data: AppData;
   setData: React.Dispatch<React.SetStateAction<AppData>>;
+  companyProfile: CompanyProfile;
   storageMode: StorageDriver;
   storageMessage: string;
   storageMeta: StorageMeta;
@@ -16,6 +17,7 @@ interface SettingsProps {
 export const Settings: React.FC<SettingsProps> = ({
   data,
   setData,
+  companyProfile,
   storageMode,
   storageMessage,
   storageMeta,
@@ -23,6 +25,16 @@ export const Settings: React.FC<SettingsProps> = ({
   importInputRef,
   handleImport
 }) => {
+  function updateCompanyProfile(field: keyof CompanyProfile, value: string) {
+    setData((prev) => ({
+      ...prev,
+      companyProfile: {
+        ...prev.companyProfile,
+        [field]: value,
+      },
+    }));
+  }
+
   function updateMaterialPrice(id: string, field: keyof Pick<MaterialPriceSetting, 'label' | 'unit' | 'price' | 'supplier'>, value: string) {
     setData((prev) => ({
       ...prev,
@@ -47,44 +59,112 @@ export const Settings: React.FC<SettingsProps> = ({
         <div className="card">
           <div className="section-head">
             <h3>Company settings</h3>
-            <span>Public info imported</span>
+            <span>Used across proposals, PDF exports, and billing</span>
           </div>
-          <div className="detail-stack company-stack">
-            <div>
-              <span>Company</span>
-              <strong>{companyProfile.name}</strong>
+          <div className="form-grid compact-grid">
+            <div className="workflow-callout">
+              <strong>{companyDisplayName(companyProfile)}</strong>
+              <span>{companyTagline(companyProfile)}</span>
             </div>
-            <div>
+            <div className="split-grid">
+              <label className="field">
+                <span>Company name</span>
+                <input
+                  value={companyProfile.name}
+                  placeholder="Your Roofing Company"
+                  onChange={(event) => updateCompanyProfile('name', event.target.value)}
+                />
+              </label>
+              <label className="field">
+                <span>Short name</span>
+                <input
+                  value={companyProfile.shortName}
+                  placeholder="YRC"
+                  onChange={(event) => updateCompanyProfile('shortName', event.target.value)}
+                />
+              </label>
+            </div>
+            <label className="field">
               <span>Tagline</span>
-              <strong>{companyProfile.tagline}</strong>
-            </div>
-            <div>
+              <input
+                value={companyProfile.tagline}
+                placeholder="What shows on proposals and PDFs"
+                onChange={(event) => updateCompanyProfile('tagline', event.target.value)}
+              />
+            </label>
+            <label className="field">
               <span>Service area</span>
-              <strong>{companyProfile.city}</strong>
+              <input
+                value={companyProfile.city}
+                placeholder="Windsor, ON"
+                onChange={(event) => updateCompanyProfile('city', event.target.value)}
+              />
+            </label>
+            <div className="split-grid">
+              <label className="field">
+                <span>Phone</span>
+                <input
+                  value={companyProfile.phone}
+                  placeholder="(519) 555-0000"
+                  onChange={(event) => updateCompanyProfile('phone', event.target.value)}
+                />
+              </label>
+              <label className="field">
+                <span>Email</span>
+                <input
+                  value={companyProfile.email}
+                  placeholder="office@yourcompany.com"
+                  onChange={(event) => updateCompanyProfile('email', event.target.value)}
+                />
+              </label>
             </div>
-            <div>
-              <span>Phone</span>
-              <strong>
-                <button type="button" className="address-link" onClick={() => openPhoneDialer(companyProfile.phone)}>
-                  {companyProfile.phone}
-                </button>
-              </strong>
-            </div>
-            <div>
-              <span>Email</span>
-              <strong>
-                <button type="button" className="address-link" onClick={() => openEmailClient(companyProfile.email)}>
-                  {companyProfile.email}
-                </button>
-              </strong>
-            </div>
-            <div>
+            <label className="field">
               <span>Website</span>
-              <strong>
-                <button type="button" className="address-link" onClick={() => openExternalUrl(`https://${companyProfile.website}`)}>
-                  {companyProfile.website}
-                </button>
-              </strong>
+              <input
+                value={companyProfile.website}
+                placeholder="yourcompany.com"
+                onChange={(event) => updateCompanyProfile('website', event.target.value)}
+              />
+            </label>
+            <div className="detail-stack company-stack">
+              <div>
+                <span>Preview name</span>
+                <strong>{companyDisplayName(companyProfile)}</strong>
+              </div>
+              <div>
+                <span>Preview short name</span>
+                <strong>{companyShortName(companyProfile)}</strong>
+              </div>
+              <div>
+                <span>Phone</span>
+                <strong>
+                  {companyProfile.phone ? (
+                    <button type="button" className="address-link" onClick={() => openPhoneDialer(companyProfile.phone)}>
+                      {companyProfile.phone}
+                    </button>
+                  ) : 'Not set'}
+                </strong>
+              </div>
+              <div>
+                <span>Email</span>
+                <strong>
+                  {companyProfile.email ? (
+                    <button type="button" className="address-link" onClick={() => openEmailClient(companyProfile.email)}>
+                      {companyProfile.email}
+                    </button>
+                  ) : 'Not set'}
+                </strong>
+              </div>
+              <div>
+                <span>Website</span>
+                <strong>
+                  {companyProfile.website ? (
+                    <button type="button" className="address-link" onClick={() => openExternalUrl(`https://${companyProfile.website}`)}>
+                      {companyProfile.website}
+                    </button>
+                  ) : 'Not set'}
+                </strong>
+              </div>
             </div>
           </div>
         </div>
@@ -182,23 +262,6 @@ export const Settings: React.FC<SettingsProps> = ({
             <div style={{ marginTop: '12px', fontSize: '12px', color: '#627285' }}>
               Manual prices are saved with the rest of your app data and reused in both Roof Math and proposal line items.
             </div>
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="section-head">
-            <h3>What changed in this build</h3>
-            <span>Operational upgrades</span>
-          </div>
-          <div className="list-grid">
-            {[
-              'Desktop app now reads and writes through native SQLite',
-              'Automatic JSON backups are created on each desktop save',
-              'Proposal screen can export a customer-facing estimate PDF',
-              'Inspection screen can open the camera directly on mobile devices'
-            ].map((item) => (
-              <div className="kanban-card" key={item}>{item}</div>
-            ))}
           </div>
         </div>
       </div>

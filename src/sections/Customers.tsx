@@ -519,10 +519,37 @@ export const Customers: React.FC<CustomersProps> = ({
                 >
                   {customer.address}
                 </button>
-                <small>
-                  {customer.phone || 'No phone'}
-                  {customer.email ? ` · ${customer.email}` : ''} · {customer.source}
-                </small>
+                <div className="job-tile-meta-row">
+                  {customer.phone ? (
+                    <button
+                      type="button"
+                      className="address-link"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openPhoneDialer(customer.phone);
+                      }}
+                    >
+                      {customer.phone}
+                    </button>
+                  ) : (
+                    <span>No phone</span>
+                  )}
+                  {customer.email ? (
+                    <button
+                      type="button"
+                      className="address-link"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openEmailClient(customer.email);
+                      }}
+                    >
+                      {customer.email}
+                    </button>
+                  ) : (
+                    <span>No email</span>
+                  )}
+                  <span>{customer.source}</span>
+                </div>
               </div>
             ))}
 

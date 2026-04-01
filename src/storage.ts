@@ -42,6 +42,7 @@ let databaseConnection: SQLiteDBConnection | null = null
 
 function normalizeAppData(partial?: Partial<AppData> | null): AppData {
   const normalized: AppData = {
+    companyProfile: partial?.companyProfile ?? seedData.companyProfile,
     customers: partial?.customers ?? seedData.customers,
     jobs: partial?.jobs ?? seedData.jobs,
     estimates: partial?.estimates ?? seedData.estimates,

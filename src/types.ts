@@ -5,6 +5,15 @@ export type DamageType = 'Leak' | 'Shingle Damage' | 'Flashing' | 'Ventilation' 
 export type Urgency = 'Low' | 'Medium' | 'High' | 'Emergency'
 export type PhotoCategory = 'Before' | 'Damage' | 'Progress' | 'After'
 export type MaterialUnit = 'bundle' | 'roll' | 'piece' | 'lf' | 'sq'
+export type CompanyProfile = {
+  name: string
+  shortName: string
+  tagline: string
+  city: string
+  phone: string
+  email: string
+  website: string
+}
 
 export type Customer = { id: string; name: string; phone: string; email: string; address: string; notes: string; leadStatus: LeadStatus; source: string }
 export type JobPriority = 'Low' | 'Normal' | 'High'
@@ -22,5 +31,5 @@ export type Measurements = { squares: number; ridgeLength: number; valleyLength:
 export type Inspection = {
   id: string; customerId: string; roofType: string; roofAge: string; pitch: string; stories: string; damageType: DamageType; urgency: Urgency; leakActive: boolean; deckingConcern: boolean; flashingConcern: boolean; ventilationConcern: boolean; insuranceClaim: boolean; summary: string; recommendation: string; measurements: Measurements; roofPlanes: RoofPlane[]; photos: InspectionPhoto[]; createdAt: string
 }
-export type AppData = { customers: Customer[]; jobs: Job[]; estimates: Estimate[]; invoices: Invoice[]; inspections: Inspection[]; materialPrices: MaterialPriceSetting[] }
+export type AppData = { companyProfile: CompanyProfile; customers: Customer[]; jobs: Job[]; estimates: Estimate[]; invoices: Invoice[]; inspections: Inspection[]; materialPrices: MaterialPriceSetting[] }
 export type PlaneStats = { rawArea: number; slopeFactor: number; adjustedArea: number; squares: number }

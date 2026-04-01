@@ -1,9 +1,25 @@
-import type { Estimate, EstimateLineItem, Inspection, InspectionPhoto, Invoice, InvoiceStatus, MaterialPriceSetting, Measurements, PlaneStats, RoofPlane } from './types'
+import type { CompanyProfile, Estimate, EstimateLineItem, Inspection, InspectionPhoto, Invoice, InvoiceStatus, MaterialPriceSetting, Measurements, PlaneStats, RoofPlane } from './types'
 
 export const STORAGE_KEY = 'roofingcrm.v8'
 
-export const companyProfile = {
-  name: 'Roof Top Renovators', shortName: 'RTR', tagline: 'Full service roofing company serving the Windsor area', city: 'Windsor, ON, Canada', phone: '(519) 991-6100', email: 'RoofTopRenovators@gmail.com', website: 'rtrwindsor.com', facebookFollowers: '747 followers'
+export function companyDisplayName(profile: CompanyProfile) {
+  return profile.name.trim() || 'Your Roofing Company'
+}
+
+export function companyShortName(profile: CompanyProfile) {
+  return profile.shortName.trim() || 'YRC'
+}
+
+export function companyTagline(profile: CompanyProfile) {
+  return profile.tagline.trim() || 'Add your company details in Settings'
+}
+
+function companyContactLine(profile: CompanyProfile) {
+  return [profile.city, profile.phone, profile.email].map((value) => value.trim()).filter(Boolean).join(' · ') || 'Company details available in Settings'
+}
+
+function companyFooterLine(profile: CompanyProfile) {
+  return [companyDisplayName(profile), profile.website.trim()].filter(Boolean).join(' · ')
 }
 
 export function uid() { return Math.random().toString(36).slice(2, 10) }
@@ -196,6 +212,7 @@ function escapeHtml(value: string) {
 }
 
 export function buildEstimatePdfHtml(args: {
+  companyProfile: CompanyProfile
   customerName: string
   customerAddress: string
   customerPhone?: string
@@ -213,7 +230,7 @@ export function buildEstimatePdfHtml(args: {
     deposit: number
   }
 }) {
-  const { customerName, customerAddress, customerPhone, customerEmail, jobTitle, estimate, inspection, totals } = args
+  const { companyProfile, customerName, customerAddress, customerPhone, customerEmail, jobTitle, estimate, inspection, totals } = args
   const date = new Date().toLocaleDateString('en-CA')
   const lineItems = estimate.lineItems.map((item) => `
     <tr>
@@ -243,7 +260,7 @@ export function buildEstimatePdfHtml(args: {
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>${escapeHtml(companyProfile.shortName)} Estimate</title>
+    <title>${escapeHtml(companyShortName(companyProfile))} Estimate</title>
     <style>
       body { font-family: Arial, Helvetica, sans-serif; margin: 32px; color: #122033; }
       .topbar { display:flex; justify-content:space-between; gap:24px; margin-bottom:24px; }
@@ -269,10 +286,10 @@ export function buildEstimatePdfHtml(args: {
   <body>
     <div class="topbar">
       <div class="brand">
-        <div class="brand-badge">${escapeHtml(companyProfile.shortName)} ESTIMATE</div>
-        <h1>${escapeHtml(companyProfile.name)}</h1>
-        <p class="muted">${escapeHtml(companyProfile.tagline)}</p>
-        <p class="muted">${escapeHtml(companyProfile.city)} · ${escapeHtml(companyProfile.phone)} · ${escapeHtml(companyProfile.email)}</p>
+        <div class="brand-badge">${escapeHtml(companyShortName(companyProfile))} ESTIMATE</div>
+        <h1>${escapeHtml(companyDisplayName(companyProfile))}</h1>
+        <p class="muted">${escapeHtml(companyTagline(companyProfile))}</p>
+        <p class="muted">${escapeHtml(companyContactLine(companyProfile))}</p>
       </div>
       <div class="card">
         <div class="detail-grid">
@@ -324,7 +341,7 @@ export function buildEstimatePdfHtml(args: {
     </div>
 
     <div class="footer">
-      Prepared by ${escapeHtml(companyProfile.name)} · ${escapeHtml(companyProfile.website)}
+      Prepared by ${escapeHtml(companyFooterLine(companyProfile))}
     </div>
   </body>
 </html>`

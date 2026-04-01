@@ -245,6 +245,7 @@ export default function App() {
     try {
       const parsed = JSON.parse(await file.text()) as Partial<AppData>;
       const importedData: AppData = {
+        companyProfile: parsed.companyProfile ?? seedData.companyProfile,
         customers: parsed.customers ?? seedData.customers,
         jobs: parsed.jobs ?? seedData.jobs,
         estimates: parsed.estimates ?? seedData.estimates,
@@ -388,6 +389,14 @@ export default function App() {
   };
   const totalPhotos = data.inspections.reduce((sum, inspection) => sum + inspection.photos.length, 0);
   const totalSquares = data.inspections.reduce((sum, inspection) => sum + inspection.measurements.squares, 0);
+  const workflowSteps: { key: View; label: string; caption: string }[] = [
+    { key: 'customers', label: '1. Customer', caption: selectedCustomer?.name ?? 'Choose homeowner' },
+    { key: 'inspect', label: '2. Inspection', caption: selectedInspection ? `${selectedInspection.damageType} ready` : 'Capture roof data' },
+    { key: 'jobs', label: '3. Project', caption: selectedJob?.title ?? 'Create or pick project' },
+    { key: 'estimates', label: '4. Estimate', caption: data.estimates.find((estimate) => estimate.jobId === selectedJobId) ? 'Proposal drafted' : 'Price the work' },
+    { key: 'invoices', label: '5. Invoice', caption: data.invoices.find((invoice) => invoice.jobId === selectedJobId) ? 'Billing started' : 'Create billing' },
+    { key: 'settings', label: 'Settings', caption: data.companyProfile.name.trim() || 'Set company profile' },
+  ];
   return (
     <div className="page-shell">
       <aside className="sidebar">
@@ -494,6 +503,18 @@ export default function App() {
               <small>{selectedJob ? `${selectedJob.status} · ${selectedJob.scheduledFor || 'No date set'}` : 'Pick a job to build estimates and invoices.'}</small>
             </div>
           </div>
+          <div className="workflow-strip">
+            {workflowSteps.map((step) => (
+              <button
+                key={step.key}
+                className={`workflow-step ${view === step.key ? 'active' : ''}`}
+                onClick={() => setView(step.key)}
+              >
+                <span>{step.label}</span>
+                <strong>{step.caption}</strong>
+              </button>
+            ))}
+          </div>
 
           {view === 'dashboard' && (
             <Dashboard
@@ -594,6 +615,7 @@ export default function App() {
             <Settings
               data={data}
               setData={setData}
+              companyProfile={data.companyProfile}
               storageMode={storageMode}
               storageMessage={storageMessage}
               storageMeta={storageMeta}

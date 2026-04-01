@@ -308,6 +308,42 @@ button:hover {
   margin-bottom: 14px;
 }
 
+.workflow-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.workflow-step {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text);
+}
+
+.workflow-step span {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.workflow-step strong {
+  color: #dce6ff;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.workflow-step.active {
+  border-color: rgba(74, 130, 255, 0.42);
+  background: rgba(47, 107, 255, 0.12);
+}
+
 .context-card {
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -1345,6 +1381,10 @@ button.ghost.danger {
     grid-template-columns: 1fr;
   }
 
+  .workflow-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .search {
     max-width: 100%;
   }
@@ -1429,5 +1469,9 @@ button.ghost.danger {
 
   .photo-card img {
     height: 180px;
+  }
+
+  .workflow-strip {
+    grid-template-columns: 1fr;
   }
 }

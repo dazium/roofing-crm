@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { AppData, Estimate, EstimateLineItem, Inspection } from '../types';
-import { buildEstimateLineItemsFromPlan, buildEstimatePdfHtml, companyProfile, money, openAddressInMaps, openEmailClient, openPhoneDialer } from '../lib';
+import { buildEstimateLineItemsFromPlan, buildEstimatePdfHtml, companyDisplayName, companyTagline, money, openAddressInMaps, openEmailClient, openPhoneDialer } from '../lib';
 import { RoofMathPanel } from '../components/RoofMathPanel';
 
 interface EstimatesProps {
@@ -184,6 +184,7 @@ export const Estimates: React.FC<EstimatesProps> = ({
     };
 
     const html = buildEstimatePdfHtml({
+      companyProfile: data.companyProfile,
       customerName: selectedCustomer.name,
       customerAddress: selectedCustomer.address,
       customerPhone: selectedCustomer.phone,
@@ -493,8 +494,8 @@ export const Estimates: React.FC<EstimatesProps> = ({
           {selectedCustomer && selectedJob ? (
             <div className="proposal-preview">
               <div className="proposal-brand">
-                <strong>{companyProfile.name}</strong>
-                <span>{companyProfile.tagline}</span>
+                <strong>{companyDisplayName(data.companyProfile)}</strong>
+                <span>{companyTagline(data.companyProfile)}</span>
               </div>
               <div className="detail-stack">
                 <div>
