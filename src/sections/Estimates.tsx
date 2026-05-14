@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { AppData, Estimate, EstimateLineItem, Inspection } from '../types';
-import { buildEstimateLineItemsFromPlan, buildEstimatePdfHtml, companyDisplayName, companyTagline, money, openAddressInMaps, openEmailClient, openPhoneDialer } from '../lib';
+import { buildEstimateLineItemsFromDamages, buildEstimateLineItemsFromPlan, buildEstimatePdfHtml, companyDisplayName, companyTagline, money, openAddressInMaps, openEmailClient, openPhoneDialer, uid } from '../lib';
 import { RoofMathPanel } from '../components/RoofMathPanel';
 
 interface EstimatesProps {
@@ -15,10 +15,6 @@ interface EstimatesProps {
   selectedInspection: Inspection | null;
   goToJobs: () => void;
   goToBilling: () => void;
-}
-
-function uid() {
-  return Math.random().toString(36).substring(2) + Date.now().toString(36);
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -50,6 +46,12 @@ export const Estimates: React.FC<EstimatesProps> = ({
   const selectedCustomer = data.customers.find((c) => c.id === selectedCustomerId) || null;
   const selectedEstimate = data.estimates.find((e) => e.jobId === selectedJobId) || null;
   const selectedInspectionSquares = selectedInspection?.measurements.squares ?? 0;
+  const selectedDamageRecords = data.damages.filter((damage) => {
+    if (selectedJobId) return damage.jobId === selectedJobId;
+    if (selectedCustomerId) return damage.customerId === selectedCustomerId;
+    return false;
+  });
+  const selectedDamageMaterialCount = selectedDamageRecords.reduce((sum, damage) => sum + damage.materials.length, 0);
 
   const proposalTotals = useMemo(() => {
     const lineItemsSubtotal = estimateForm.lineItems.reduce((sum, item) => sum + cleanMoneyInput(Number(item.total || 0)), 0);
@@ -152,6 +154,21 @@ export const Estimates: React.FC<EstimatesProps> = ({
     }));
   }
 
+  function syncEstimateFromDamages() {
+    const { lineItems, materialCost } = buildEstimateLineItemsFromDamages(selectedDamageRecords, data.materialPrices, uid);
+    if (!lineItems.length) return;
+
+    const labourItems = estimateForm.lineItems.filter((item) => item.title.trim().toLowerCase() === 'labour');
+    const laborCost = labourItems.reduce((sum, item) => sum + cleanMoneyInput(Number(item.total || 0)), 0);
+
+    setEstimateForm((prev) => ({
+      ...prev,
+      materialCost,
+      laborCost,
+      lineItems: [...lineItems, ...labourItems],
+    }));
+  }
+
   function saveEstimate() {
     if (!selectedJobId) return;
     const record: Estimate = {
@@ -225,7 +242,7 @@ export const Estimates: React.FC<EstimatesProps> = ({
   }
 
   return (
-    <section className="content-grid">
+    <section className="content-grid two-col">
       <div className="column-stack">
         <div className="card">
           <div className="section-head">
@@ -269,10 +286,11 @@ export const Estimates: React.FC<EstimatesProps> = ({
               </div>
               <div className="estimate-overview">
                 <div className="estimate-tip">
-                  Inspection shows <strong>{selectedInspectionSquares.toFixed(1)}</strong> plan squares. Use <strong>Build from measurements</strong> to convert the inspection into a first-pass material list and labour estimate. Final proposal total is <strong>{money(proposalTotals.grand)}</strong>.
+                  Inspection shows <strong>{selectedInspectionSquares.toFixed(1)}</strong> plan squares and this scope has <strong>{selectedDamageMaterialCount}</strong> damage material allocation(s). Use measurements for full roof replacement pricing or damages for repair/material-driven pricing. Final proposal total is <strong>{money(proposalTotals.grand)}</strong>.
                 </div>
                 <div className="hero-actions">
                   <button className="ghost" onClick={syncEstimateFromPlan}>Build from measurements</button>
+                  <button className="ghost" onClick={syncEstimateFromDamages}>Build from damages</button>
                   <button className="ghost" onClick={exportEstimatePdf}>Export PDF</button>
                 </div>
               </div>

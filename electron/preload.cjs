@@ -6,4 +6,5 @@ contextBridge.exposeInMainWorld('roofingcrmDesktop', {
   getMeta: () => ipcRenderer.invoke('desktop-storage:meta'),
   exportEstimatePdf: (payload) => ipcRenderer.invoke('desktop-estimate:export-pdf', payload),
   runMaterialScraper: () => ipcRenderer.invoke('desktop-materials:run-scraper'),
+  getLatestMaterialPrices: () => ipcRenderer.invoke('desktop-materials:get-latest'),
 })

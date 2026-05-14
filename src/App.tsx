@@ -7,6 +7,13 @@ import { Jobs } from './sections/Jobs';
 import { Estimates } from './sections/Estimates';
 import { Invoices } from './sections/Invoices';
 import { Settings } from './sections/Settings';
+import { Tasks } from './sections/Tasks';
+import { Calendar } from './sections/Calendar';
+import { Crews } from './sections/Crews';
+import { Damages } from './sections/Damages';
+import { Photos } from './sections/Photos';
+import { CrewMode } from './sections/CrewMode';
+import { Locations } from './sections/Locations';
 import { seedData } from './data';
 import { defaultEstimate, optimizeInspectionPhoto, uid } from './lib';
 import { getStorageMeta, loadAppData, saveAppData, type StorageDriver, type StorageMeta } from './storage';
@@ -244,14 +251,27 @@ export default function App() {
 
     try {
       const parsed = JSON.parse(await file.text()) as Partial<AppData>;
+
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('Backup root must be an object.');
+      }
+
       const importedData: AppData = {
-        companyProfile: parsed.companyProfile ?? seedData.companyProfile,
-        customers: parsed.customers ?? seedData.customers,
-        jobs: parsed.jobs ?? seedData.jobs,
-        estimates: parsed.estimates ?? seedData.estimates,
-        invoices: parsed.invoices ?? seedData.invoices,
-        inspections: parsed.inspections ?? seedData.inspections,
-        materialPrices: parsed.materialPrices ?? seedData.materialPrices,
+        companyProfile: parsed.companyProfile && typeof parsed.companyProfile === 'object' && !Array.isArray(parsed.companyProfile)
+          ? { ...seedData.companyProfile, ...parsed.companyProfile }
+          : seedData.companyProfile,
+        customers: Array.isArray(parsed.customers) ? parsed.customers : seedData.customers,
+        jobs: Array.isArray(parsed.jobs) ? parsed.jobs : seedData.jobs,
+        estimates: Array.isArray(parsed.estimates) ? parsed.estimates : seedData.estimates,
+        invoices: Array.isArray(parsed.invoices) ? parsed.invoices : seedData.invoices,
+        invoiceHistory: Array.isArray(parsed.invoiceHistory) ? parsed.invoiceHistory : seedData.invoiceHistory,
+        inspections: Array.isArray(parsed.inspections) ? parsed.inspections : seedData.inspections,
+        materialPrices: Array.isArray(parsed.materialPrices) ? parsed.materialPrices : seedData.materialPrices,
+        materialPriceHistory: Array.isArray(parsed.materialPriceHistory) ? parsed.materialPriceHistory : seedData.materialPriceHistory,
+        tasks: Array.isArray(parsed.tasks) ? parsed.tasks : seedData.tasks,
+        crews: Array.isArray(parsed.crews) ? parsed.crews : seedData.crews,
+        appointments: Array.isArray(parsed.appointments) ? parsed.appointments : seedData.appointments,
+        damages: Array.isArray(parsed.damages) ? parsed.damages : seedData.damages,
       };
 
       setData(importedData);
@@ -329,6 +349,9 @@ export default function App() {
       inspections: prev.inspections.map((inspection) => inspection.customerId === selectedCustomerId
         ? { ...inspection, photos: inspection.photos.filter((photo) => photo.id !== photoId) }
         : inspection),
+      damages: prev.damages.map((damage) => damage.customerId === selectedCustomerId
+        ? { ...damage, linkedPhotoIds: damage.linkedPhotoIds.filter((id) => id !== photoId) }
+        : damage),
     }));
   }
 
@@ -368,13 +391,23 @@ export default function App() {
     selectCustomer(selectedCustomerId, nextData);
   }
 
+  const totalPhotos = data.inspections.reduce((sum, inspection) => sum + inspection.photos.length, 0);
+  const totalSquares = data.inspections.reduce((sum, inspection) => sum + inspection.measurements.squares, 0);
+
   const navItems: { key: View; label: string; count?: number }[] = [
     { key: 'dashboard', label: 'Workspace' },
     { key: 'customers', label: 'Customers', count: data.customers.length },
     { key: 'inspect', label: 'Inspection', count: data.inspections.length },
+    { key: 'photos', label: 'Photos', count: totalPhotos },
     { key: 'estimates', label: 'Estimates', count: data.estimates.length },
     { key: 'jobs', label: 'Projects', count: data.jobs.length },
+    { key: 'damages', label: 'Damages', count: data.damages.length },
     { key: 'invoices', label: 'Invoices', count: data.invoices.length },
+    { key: 'tasks', label: 'Tasks', count: data.tasks.length },
+    { key: 'calendar', label: 'Calendar', count: data.appointments.length },
+    { key: 'locations', label: 'Locations', count: data.customers.filter((customer) => customer.address.trim()).length },
+    { key: 'crews', label: 'Crews', count: data.crews.length },
+    { key: 'crew-mode', label: 'Crew Mode', count: data.jobs.filter((job) => job.crewId).length },
     { key: 'settings', label: 'Settings' }
   ];
   const activeView = navItems.find((item) => item.key === view);
@@ -382,19 +415,29 @@ export default function App() {
     dashboard: 'Focused workspace for the selected customer and project.',
     customers: 'Manage homeowners, lead details, and property information.',
     jobs: 'Track projects from scheduled work to close-out.',
+    photos: 'Capture before, damage, progress, and after photo documentation.',
+    damages: 'Track roof damage findings and material allocations.',
     inspect: 'Measure the roof, note the problem, and capture field photos.',
     estimates: 'Build customer estimates from inspection measurements and pricing.',
     invoices: 'Track invoices, payments, and outstanding balances.',
+    tasks: 'Track follow-ups, office prep, and project action items.',
+    calendar: 'Schedule inspections, estimates, and job starts.',
+    locations: 'Map job sites, customer addresses, and active route stops.',
+    crews: 'Manage roofing crews and dispatch readiness.',
+    'crew-mode': 'Field-focused view for assigned crew jobs.',
     settings: 'Backups, storage mode, and delivery controls.',
   };
-  const totalPhotos = data.inspections.reduce((sum, inspection) => sum + inspection.photos.length, 0);
-  const totalSquares = data.inspections.reduce((sum, inspection) => sum + inspection.measurements.squares, 0);
+  const showWorkspaceChrome = view !== 'settings';
   const workflowSteps: { key: View; label: string; caption: string }[] = [
     { key: 'customers', label: '1. Customer', caption: selectedCustomer?.name ?? 'Choose homeowner' },
     { key: 'inspect', label: '2. Inspection', caption: selectedInspection ? `${selectedInspection.damageType} ready` : 'Capture roof data' },
-    { key: 'jobs', label: '3. Project', caption: selectedJob?.title ?? 'Create or pick project' },
-    { key: 'estimates', label: '4. Estimate', caption: data.estimates.find((estimate) => estimate.jobId === selectedJobId) ? 'Proposal drafted' : 'Price the work' },
-    { key: 'invoices', label: '5. Invoice', caption: data.invoices.find((invoice) => invoice.jobId === selectedJobId) ? 'Billing started' : 'Create billing' },
+    { key: 'photos', label: '3. Photos', caption: selectedInspection?.photos.length ? `${selectedInspection.photos.length} photo(s)` : 'Document the job' },
+    { key: 'jobs', label: '4. Project', caption: selectedJob?.title ?? 'Create or pick project' },
+    { key: 'damages', label: '5. Damages', caption: data.damages.find((damage) => damage.jobId === selectedJobId || (!selectedJobId && damage.customerId === selectedCustomerId)) ? 'Damage records saved' : 'Log damages + materials' },
+    { key: 'estimates', label: '6. Estimate', caption: data.estimates.find((estimate) => estimate.jobId === selectedJobId) ? 'Proposal drafted' : 'Price the work' },
+    { key: 'invoices', label: '7. Invoice', caption: data.invoices.find((invoice) => invoice.jobId === selectedJobId) ? 'Billing started' : 'Create billing' },
+    { key: 'tasks', label: '8. Tasks', caption: data.tasks.find((task) => task.jobId === selectedJobId || (!selectedJobId && task.customerId === selectedCustomerId)) ? 'Follow-ups tracked' : 'Add follow-up tasks' },
+    { key: 'locations', label: '9. Locations', caption: selectedCustomer?.address ?? 'Map the route' },
     { key: 'settings', label: 'Settings', caption: data.companyProfile.name.trim() || 'Set company profile' },
   ];
   return (
@@ -473,48 +516,52 @@ export default function App() {
           </div>
         </div>
         <div className="page-content">
-          <div className="context-strip">
-            <div className="context-card">
-              <span>Current customer</span>
-              <label className="field context-select-field">
-                <select value={selectedCustomerId ?? ''} onChange={(event) => selectCustomer(event.target.value || null)}>
-                  <option value="">Select a customer</option>
-                  {data.customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name} - {customer.address}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <small>{selectedCustomer?.address ?? 'Select a customer to keep jobs, inspections, and estimates in sync.'}</small>
-            </div>
-            <div className="context-card">
-              <span>Current job</span>
-              <label className="field context-select-field">
-                <select value={selectedJobId ?? ''} onChange={(event) => selectJob(event.target.value || null)}>
-                  <option value="">Select a job</option>
-                  {data.jobs.filter((job) => !selectedCustomerId || job.customerId === selectedCustomerId).map((job) => (
-                    <option key={job.id} value={job.id}>
-                      {job.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <small>{selectedJob ? `${selectedJob.status} · ${selectedJob.scheduledFor || 'No date set'}` : 'Pick a job to build estimates and invoices.'}</small>
-            </div>
-          </div>
-          <div className="workflow-strip">
-            {workflowSteps.map((step) => (
-              <button
-                key={step.key}
-                className={`workflow-step ${view === step.key ? 'active' : ''}`}
-                onClick={() => setView(step.key)}
-              >
-                <span>{step.label}</span>
-                <strong>{step.caption}</strong>
-              </button>
-            ))}
-          </div>
+          {showWorkspaceChrome && (
+            <>
+              <div className="context-strip">
+                <div className="context-card">
+                  <span>Current customer</span>
+                  <label className="field context-select-field">
+                    <select value={selectedCustomerId ?? ''} onChange={(event) => selectCustomer(event.target.value || null)}>
+                      <option value="">Select a customer</option>
+                      {data.customers.map((customer) => (
+                        <option key={customer.id} value={customer.id}>
+                          {customer.name} - {customer.address}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <small>{selectedCustomer?.address ?? 'Select a customer to keep jobs, inspections, and estimates in sync.'}</small>
+                </div>
+                <div className="context-card">
+                  <span>Current job</span>
+                  <label className="field context-select-field">
+                    <select value={selectedJobId ?? ''} onChange={(event) => selectJob(event.target.value || null)}>
+                      <option value="">Select a job</option>
+                      {data.jobs.filter((job) => !selectedCustomerId || job.customerId === selectedCustomerId).map((job) => (
+                        <option key={job.id} value={job.id}>
+                          {job.title}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <small>{selectedJob ? `${selectedJob.status} · ${selectedJob.scheduledFor || 'No date set'}` : 'Pick a job to build estimates and invoices.'}</small>
+                </div>
+              </div>
+              <div className="workflow-strip">
+                {workflowSteps.map((step) => (
+                  <button
+                    key={step.key}
+                    className={`workflow-step ${view === step.key ? 'active' : ''}`}
+                    onClick={() => setView(step.key)}
+                  >
+                    <span>{step.label}</span>
+                    <strong>{step.caption}</strong>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
           {view === 'dashboard' && (
             <Dashboard
@@ -531,8 +578,10 @@ export default function App() {
                 selectJob(jobId);
               }}
               onOpenInspect={() => setView('inspect')}
+              onOpenDamages={() => setView('damages')}
               onOpenEstimates={() => setView('estimates')}
               onOpenInvoices={() => setView('invoices')}
+              onOpenTasks={() => setView('tasks')}
             />
           )}
 
@@ -584,6 +633,36 @@ export default function App() {
             />
           )}
 
+          {view === 'photos' && (
+            <Photos
+              data={data}
+              selectedCustomerId={selectedCustomerId}
+              selectCustomer={selectCustomer}
+              selectedJobId={selectedJobId}
+              selectJob={selectJob}
+              photoCategory={photoCategory}
+              setPhotoCategory={setPhotoCategory}
+              photoLabel={photoLabel}
+              setPhotoLabel={setPhotoLabel}
+              handlePhotoUpload={handlePhotoUpload}
+              removeInspectionPhoto={removeInspectionPhoto}
+              galleryInputRef={galleryInputRef}
+              cameraInputRef={cameraInputRef}
+              setView={setView}
+            />
+          )}
+
+          {view === 'damages' && (
+            <Damages
+              data={data}
+              setData={setData}
+              selectedCustomerId={selectedCustomerId}
+              selectCustomer={selectCustomer}
+              selectedJobId={selectedJobId}
+              selectJob={selectJob}
+            />
+          )}
+
           {view === 'estimates' && (
             <Estimates
               data={data}
@@ -611,6 +690,18 @@ export default function App() {
             />
           )}
 
+          {view === 'tasks' && (
+            <Tasks
+              data={data}
+              setData={setData}
+              selectedCustomerId={selectedCustomerId}
+              selectCustomer={selectCustomer}
+              selectedJobId={selectedJobId}
+              selectJob={selectJob}
+              setView={setView}
+            />
+          )}
+
           {view === 'settings' && (
             <Settings
               data={data}
@@ -622,6 +713,48 @@ export default function App() {
               exportBackup={exportBackup}
               importInputRef={importInputRef}
               handleImport={importBackup}
+            />
+          )}
+
+          {view === 'calendar' && (
+            <Calendar
+              data={data}
+              setData={setData}
+              selectedCustomerId={selectedCustomerId}
+              selectCustomer={selectCustomer}
+              selectedJobId={selectedJobId}
+              selectJob={selectJob}
+            />
+          )}
+
+          {view === 'locations' && (
+            <Locations
+              data={data}
+              selectedCustomerId={selectedCustomerId}
+              selectCustomer={selectCustomer}
+              selectedJobId={selectedJobId}
+              selectJob={selectJob}
+              setView={setView}
+            />
+          )}
+
+          {view === 'crews' && (
+            <Crews
+              data={data}
+              setData={setData}
+            />
+          )}
+
+          {view === 'crew-mode' && (
+            <CrewMode
+              data={data}
+              selectedJobId={selectedJobId}
+              selectJob={selectJob}
+              setView={setView}
+              setPhotoCategory={setPhotoCategory}
+              setPhotoLabel={setPhotoLabel}
+              cameraInputRef={cameraInputRef}
+              handlePhotoUpload={handlePhotoUpload}
             />
           )}
         </div>

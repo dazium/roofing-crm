@@ -1,7 +1,7 @@
 # Material Prices Scraper Setup
 
 ## Overview
-This scraper pulls roofing material prices from Home Depot and stores them in your RoofingCRM SQLite database. The Roof Math panel then uses those prices to show estimated material costs.
+This scraper pulls roofing material prices from Home Depot.ca and stores them in your RoofingCRM SQLite database. The Roof Math panel then uses those prices to show estimated material costs.
 
 ## Installation
 
@@ -45,7 +45,7 @@ Or run manually before building estimates.
 - Ice & Water Shield (per roll)
 - Ridge Vent (per linear foot)
 - Hip & Ridge Cap (per bundle)
-- Starters (per square)
+- Starters (per bundle)
 - Drip Edge (per linear foot)
 
 ## Notes

@@ -10,8 +10,10 @@ interface DashboardProps {
   onOpenCustomer: (customerId: string) => void;
   onOpenJob: (jobId: string) => void;
   onOpenInspect: () => void;
+  onOpenDamages: () => void;
   onOpenEstimates: () => void;
   onOpenInvoices: () => void;
+  onOpenTasks: () => void;
 }
 
 type ActivityItem = {
@@ -33,8 +35,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onOpenCustomer,
   onOpenJob,
   onOpenInspect,
+  onOpenDamages,
   onOpenEstimates,
   onOpenInvoices,
+  onOpenTasks,
 }) => {
   const selectedCustomer = useMemo(
     () => data.customers.find((customer) => customer.id === selectedCustomerId) ?? null,
@@ -55,6 +59,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
     () => data.estimates.find((estimate) => estimate.jobId === selectedJobId) ?? null,
     [data.estimates, selectedJobId]
   );
+  const selectedDamages = useMemo(
+    () => data.damages.filter((damage) => damage.jobId === selectedJobId || (!selectedJobId && damage.customerId === selectedCustomerId)),
+    [data.damages, selectedCustomerId, selectedJobId]
+  );
 
   const selectedInvoices = useMemo(
     () => data.invoices.filter((invoice) => invoice.jobId === selectedJobId),
@@ -68,8 +76,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const activeProjects = data.jobs.filter((job) => ['Scheduled', 'In Progress', 'Awaiting Final Review'].includes(job.status)).length;
     const needsEstimate = data.customers.filter((customer) => ['Contacted', 'Inspection Scheduled'].includes(customer.leadStatus)).length;
     const outstanding = data.invoices.filter((invoice) => invoice.status !== 'Paid').reduce((sum, invoice) => sum + invoice.balanceDue, 0);
+    const openTasks = data.tasks.filter((task) => task.status !== 'Done').length;
+    const openDamages = data.damages.length;
 
-    return { openCustomers, activeProjects, needsEstimate, outstanding };
+    return { openCustomers, activeProjects, needsEstimate, outstanding, openTasks, openDamages };
   }, [data]);
 
   const priorityJobs = useMemo(
@@ -190,6 +200,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
 
     if (!selectedEstimate) {
+      if (!selectedDamages.length) {
+        return {
+          title: 'Log damage details',
+          detail: 'Inspection exists, but no structured damage records are linked yet. Capture damage + material needs before pricing.',
+          label: 'Open damages',
+          action: onOpenDamages,
+        };
+      }
+
       return {
         title: 'Create the estimate',
         detail: 'The inspection is saved. Turn those measurements into a customer-facing estimate next.',
@@ -222,7 +241,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       label: 'Open project',
       action: () => onOpenJob(selectedJob.id),
     };
-  }, [selectedCustomer, selectedJob, selectedInspection, selectedEstimate, selectedInvoices, openInvoice, onOpenEstimates, onOpenInspect, onOpenInvoices, onOpenJob, setView]);
+  }, [selectedCustomer, selectedJob, selectedInspection, selectedEstimate, selectedDamages.length, selectedInvoices, openInvoice, onOpenDamages, onOpenEstimates, onOpenInspect, onOpenInvoices, onOpenJob, setView]);
 
   const workspaceLinks = [
     {
@@ -230,6 +249,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
       detail: selectedInspection ? `${selectedInspection.damageType} · ${selectedInspection.measurements.squares} squares` : 'No inspection saved yet',
       actionLabel: selectedInspection ? 'Open inspection' : 'Start inspection',
       action: onOpenInspect,
+    },
+    {
+      title: 'Damages',
+      detail: selectedDamages.length ? `${selectedDamages.length} damage record(s) logged` : 'No damage records yet',
+      actionLabel: 'Open damages',
+      action: onOpenDamages,
     },
     {
       title: 'Estimate',
@@ -242,6 +267,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
       detail: openInvoice ? `${openInvoice.invoiceNumber} · ${money(openInvoice.balanceDue)} balance` : 'No invoice created yet',
       actionLabel: openInvoice ? 'Open invoices' : 'Create invoice',
       action: onOpenInvoices,
+    },
+    {
+      title: 'Tasks',
+      detail: data.tasks.find((task) => task.jobId === selectedJobId || (!selectedJobId && task.customerId === selectedCustomerId)) ? 'Follow-ups and office prep saved' : 'No tasks tracked yet',
+      actionLabel: 'Open tasks',
+      action: onOpenTasks,
     },
   ];
 
@@ -326,8 +357,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           <div className="hero-actions">
             <button onClick={onOpenInspect}>Open inspection</button>
+            <button className="ghost" onClick={onOpenDamages}>Open damages</button>
             <button className="ghost" onClick={onOpenEstimates}>Open estimates</button>
             <button className="ghost" onClick={onOpenInvoices}>Open invoices</button>
+            <button className="ghost" onClick={onOpenTasks}>Open tasks</button>
             <button className="ghost" onClick={() => setView('jobs')}>Open projects</button>
           </div>
         </div>
@@ -379,6 +412,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <span>Outstanding balance</span>
           <strong>{money(dashboard.outstanding)}</strong>
           <small>Money still to collect</small>
+        </button>
+        <button className="card stat-card card-action" onClick={onOpenTasks}>
+          <span>Open tasks</span>
+          <strong>{dashboard.openTasks}</strong>
+          <small>Follow-ups and office prep still open</small>
+        </button>
+        <button className="card stat-card card-action" onClick={onOpenDamages}>
+          <span>Damage records</span>
+          <strong>{dashboard.openDamages}</strong>
+          <small>Tracked damage entries</small>
         </button>
       </section>
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { AppData, Invoice, InvoiceStatus } from '../types';
-import { badgeTone, money, openAddressInMaps, openEmailClient, openPhoneDialer, reconcileInvoice } from '../lib';
+import type { AppData, Invoice, InvoiceHistoryAction, InvoiceHistoryEntry, InvoiceStatus } from '../types';
+import { badgeTone, buildInvoicePdfHtml, money, openAddressInMaps, openEmailClient, openPhoneDialer, reconcileInvoice, uid } from '../lib';
 
 interface InvoicesProps {
   data: AppData;
@@ -23,10 +23,6 @@ type InvoiceForm = {
   notes: string;
 };
 
-function uid() {
-  return Math.random().toString(36).substring(2) + Date.now().toString(36);
-}
-
 function nextInvoiceNumber(invoices: Invoice[]) {
   const max = invoices.reduce((highest, invoice) => {
     const match = invoice.invoiceNumber.match(/(\d+)$/);
@@ -34,6 +30,44 @@ function nextInvoiceNumber(invoices: Invoice[]) {
     return Math.max(highest, number);
   }, 2000);
   return `INV-${max + 1}`;
+}
+
+function cleanMoney(value: number) {
+  return Number.isFinite(value) ? Math.max(0, value) : 0;
+}
+
+const INVOICE_HISTORY_LIMIT = 300;
+
+function changedInvoiceState(a: Invoice, b: Invoice) {
+  return a.status !== b.status || a.paidAmount !== b.paidAmount || a.balanceDue !== b.balanceDue || a.paidDate !== b.paidDate;
+}
+
+function daysUntil(dateValue?: string) {
+  if (!dateValue) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(dateValue);
+  if (Number.isNaN(due.getTime())) return null;
+  due.setHours(0, 0, 0, 0);
+  return Math.floor((due.getTime() - today.getTime()) / 86400000);
+}
+
+function pushInvoiceHistory(
+  previous: InvoiceHistoryEntry[],
+  invoice: Invoice,
+  action: InvoiceHistoryAction,
+  message: string,
+): InvoiceHistoryEntry[] {
+  const entry: InvoiceHistoryEntry = {
+    id: uid(),
+    invoiceId: invoice.id,
+    invoiceNumber: invoice.invoiceNumber,
+    jobId: invoice.jobId,
+    action,
+    message,
+    createdAt: new Date().toISOString(),
+  };
+  return [entry, ...previous].slice(0, INVOICE_HISTORY_LIMIT);
 }
 
 export const Invoices: React.FC<InvoicesProps> = ({
@@ -79,9 +113,17 @@ export const Invoices: React.FC<InvoicesProps> = ({
   const selectedInvoice = data.invoices.find((invoice) => invoice.id === selectedInvoiceId) ?? null;
   const selectedInvoiceJob = data.jobs.find((job) => job.id === selectedInvoice?.jobId) ?? null;
   const selectedInvoiceCustomer = data.customers.find((customer) => customer.id === selectedInvoiceJob?.customerId) ?? null;
+  const selectedInvoiceHistory = selectedInvoice
+    ? data.invoiceHistory.filter((entry) => entry.invoiceId === selectedInvoice.id).slice(0, 8)
+    : [];
 
   const outstandingInvoices = data.invoices.filter((invoice) => invoice.status !== 'Paid');
   const overdueInvoices = data.invoices.filter((invoice) => invoice.status === 'Overdue');
+  const dueSoonInvoices = data.invoices.filter((invoice) => {
+    if (invoice.status === 'Paid') return false;
+    const days = daysUntil(invoice.dueDate);
+    return days !== null && days >= 0 && days <= 3;
+  });
 
   const invoiceJob = data.jobs.find((job) => job.id === invoiceForm.jobId) ?? null;
   const invoiceCustomer = data.customers.find((customer) => customer.id === invoiceJob?.customerId) ?? null;
@@ -114,6 +156,23 @@ export const Invoices: React.FC<InvoicesProps> = ({
     setPaymentDraft(0);
   }, [selectedInvoiceId]);
 
+  useEffect(() => {
+    const reconciled = data.invoices.map((invoice) => reconcileInvoice(invoice));
+    const changed = reconciled.some((invoice, index) => changedInvoiceState(invoice, data.invoices[index]));
+    if (!changed) return;
+
+    let history = data.invoiceHistory;
+    for (let index = 0; index < reconciled.length; index += 1) {
+      const before = data.invoices[index];
+      const after = reconciled[index];
+      if (before.status !== 'Overdue' && after.status === 'Overdue') {
+        history = pushInvoiceHistory(history, after, 'Auto Marked Overdue', `Invoice auto-marked overdue after due date ${after.dueDate || 'N/A'}.`);
+      }
+    }
+
+    setData({ ...data, invoices: reconciled, invoiceHistory: history });
+  }, [data, setData]);
+
   function resetForm(jobId = selectedJobId ?? data.jobs[0]?.id ?? '') {
     setInvoiceForm({
       jobId,
@@ -129,15 +188,17 @@ export const Invoices: React.FC<InvoicesProps> = ({
   }
 
   function createInvoice() {
-    if (!invoiceForm.jobId || !invoiceForm.invoiceNumber.trim() || invoiceForm.amount <= 0) return;
+    const amount = cleanMoney(Number(invoiceForm.amount));
+    const paidAmount = Math.min(amount, cleanMoney(Number(invoiceForm.paidAmount)));
+    if (!invoiceForm.jobId || !invoiceForm.invoiceNumber.trim() || amount <= 0) return;
 
     const record = reconcileInvoice({
       id: uid(),
       jobId: invoiceForm.jobId,
       invoiceNumber: invoiceForm.invoiceNumber.trim(),
-      amount: Number(invoiceForm.amount) || 0,
-      paidAmount: Math.max(0, Number(invoiceForm.paidAmount) || 0),
-      balanceDue: Math.max(0, Number(invoiceForm.amount) - Number(invoiceForm.paidAmount || 0)),
+      amount,
+      paidAmount,
+      balanceDue: Math.max(0, amount - paidAmount),
       status: invoiceForm.status,
       dueDate: invoiceForm.dueDate,
       issuedDate: invoiceForm.issuedDate,
@@ -145,13 +206,19 @@ export const Invoices: React.FC<InvoicesProps> = ({
       notes: invoiceForm.notes.trim() || undefined,
     });
 
-    const nextData = { ...data, invoices: [record, ...data.invoices] };
+    const nextData = {
+      ...data,
+      invoices: [record, ...data.invoices],
+      invoiceHistory: pushInvoiceHistory(data.invoiceHistory, record, 'Created', `Invoice created for ${money(record.amount)}.`),
+    };
     setData(nextData);
     setSelectedInvoiceId(record.id);
     resetForm(invoiceForm.jobId);
   }
 
   function updateInvoiceStatus(invoiceId: string, status: InvoiceStatus) {
+    const current = data.invoices.find((invoice) => invoice.id === invoiceId);
+    if (!current) return;
     const nextData = {
       ...data,
       invoices: data.invoices.map((invoice) =>
@@ -165,6 +232,13 @@ export const Invoices: React.FC<InvoicesProps> = ({
           : invoice,
       ),
     };
+    const updated = nextData.invoices.find((invoice) => invoice.id === invoiceId) ?? current;
+    nextData.invoiceHistory = pushInvoiceHistory(
+      data.invoiceHistory,
+      updated,
+      'Status Changed',
+      `Status changed from ${current.status} to ${updated.status}.`,
+    );
     setData(nextData);
   }
 
@@ -191,9 +265,50 @@ export const Invoices: React.FC<InvoicesProps> = ({
   }
 
   function deleteInvoice(invoiceId: string) {
+    const invoice = data.invoices.find((entry) => entry.id === invoiceId);
+    if (!invoice) return;
+    const confirmed = window.confirm(`Delete invoice "${invoice?.invoiceNumber ?? 'this invoice'}"?`);
+    if (!confirmed) return;
+
     const nextInvoices = data.invoices.filter((invoice) => invoice.id !== invoiceId);
-    setData({ ...data, invoices: nextInvoices });
+    setData({
+      ...data,
+      invoices: nextInvoices,
+      invoiceHistory: pushInvoiceHistory(data.invoiceHistory, invoice, 'Deleted', `Invoice deleted (${invoice.invoiceNumber}).`),
+    });
     setSelectedInvoiceId(nextInvoices[0]?.id ?? null);
+  }
+
+  async function exportInvoicePdf(invoice: Invoice) {
+    const job = data.jobs.find((entry) => entry.id === invoice.jobId);
+    const customer = data.customers.find((entry) => entry.id === job?.customerId);
+    if (!job || !customer) return;
+
+    const html = buildInvoicePdfHtml({
+      companyProfile: data.companyProfile,
+      customerName: customer.name,
+      customerAddress: customer.address,
+      customerPhone: customer.phone,
+      customerEmail: customer.email,
+      jobTitle: job.title,
+      invoice,
+    });
+
+    const safeCustomer = customer.name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'invoice';
+    const suggestedName = `${safeCustomer}-${invoice.invoiceNumber.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.pdf`;
+
+    if (window.roofingcrmDesktop?.exportEstimatePdf) {
+      await window.roofingcrmDesktop.exportEstimatePdf({ html, suggestedName });
+      return;
+    }
+
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=900,height=1200');
+    if (!printWindow) return;
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
   }
 
   function handleCustomerChange(customerId: string) {
@@ -216,6 +331,8 @@ export const Invoices: React.FC<InvoicesProps> = ({
 
   function recordPayment(invoiceId: string) {
     if (paymentDraft <= 0) return;
+    const target = data.invoices.find((invoice) => invoice.id === invoiceId);
+    if (!target) return;
     const nextData = {
       ...data,
       invoices: data.invoices.map((invoice) => {
@@ -227,12 +344,37 @@ export const Invoices: React.FC<InvoicesProps> = ({
         });
       }),
     };
+    const updated = nextData.invoices.find((invoice) => invoice.id === invoiceId) ?? target;
+    nextData.invoiceHistory = pushInvoiceHistory(
+      data.invoiceHistory,
+      updated,
+      'Payment Recorded',
+      `Payment recorded: ${money(paymentDraft)}. Balance now ${money(updated.balanceDue)}.`,
+    );
     setData(nextData);
     setPaymentDraft(0);
   }
 
+  function sendPaymentReminder(invoice: Invoice) {
+    const job = data.jobs.find((entry) => entry.id === invoice.jobId);
+    const customer = data.customers.find((entry) => entry.id === job?.customerId);
+    if (!customer?.email) {
+      window.alert('Add a customer email before sending reminders.');
+      return;
+    }
+    const subject = encodeURIComponent(`Payment reminder: ${invoice.invoiceNumber}`);
+    const body = encodeURIComponent(
+      `Hi ${customer.name},\n\nThis is a reminder that invoice ${invoice.invoiceNumber} has ${money(invoice.balanceDue)} outstanding and is due on ${invoice.dueDate || 'the due date on file'}.\n\nThanks,\n${data.companyProfile.name || 'RoofingCRM'}`,
+    );
+    window.open(`mailto:${customer.email}?subject=${subject}&body=${body}`, '_blank', 'noopener,noreferrer');
+    setData({
+      ...data,
+      invoiceHistory: pushInvoiceHistory(data.invoiceHistory, invoice, 'Reminder Sent', `Payment reminder prepared for ${customer.email}.`),
+    });
+  }
+
   return (
-    <section className="content-grid two-col">
+    <section className="content-grid two-col invoices-layout">
       <div className="column-stack">
         <div className="card">
           <div className="section-head">
@@ -319,7 +461,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
                   type="number"
                   min={0}
                   value={invoiceForm.amount}
-                  onChange={(event) => setInvoiceForm({ ...invoiceForm, amount: Number(event.target.value) })}
+                  onChange={(event) => setInvoiceForm({ ...invoiceForm, amount: cleanMoney(Number(event.target.value)) })}
                 />
               </label>
               <label className="field field-short">
@@ -328,7 +470,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
                   type="number"
                   min={0}
                   value={invoiceForm.paidAmount}
-                  onChange={(event) => setInvoiceForm({ ...invoiceForm, paidAmount: Number(event.target.value) })}
+                  onChange={(event) => setInvoiceForm({ ...invoiceForm, paidAmount: cleanMoney(Number(event.target.value)) })}
                 />
               </label>
             </div>
@@ -451,7 +593,33 @@ export const Invoices: React.FC<InvoicesProps> = ({
               <span>Overdue</span>
               <strong>{overdueInvoices.length}</strong>
             </div>
+            <div className="mini-stat-card">
+              <span>Due in 3 days</span>
+              <strong>{dueSoonInvoices.length}</strong>
+            </div>
           </div>
+          {(overdueInvoices.length > 0 || dueSoonInvoices.length > 0) && (
+            <div className="summary-box">
+              <div className="section-subhead">
+                <h4>Reminders queue</h4>
+                <span>Invoices that need customer follow-up now</span>
+              </div>
+              <div className="linked-record-list">
+                {overdueInvoices.slice(0, 4).map((invoice) => (
+                  <div key={`overdue-${invoice.id}`} className="linked-record-row">
+                    <strong>{invoice.invoiceNumber} overdue</strong>
+                    <span>{money(invoice.balanceDue)} due since {invoice.dueDate || 'unset due date'}</span>
+                  </div>
+                ))}
+                {dueSoonInvoices.slice(0, 4).map((invoice) => (
+                  <div key={`soon-${invoice.id}`} className="linked-record-row">
+                    <strong>{invoice.invoiceNumber} due soon</strong>
+                    <span>{money(invoice.balanceDue)} due on {invoice.dueDate}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -549,7 +717,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
                 <div className="customer-detail-grid">
                   <label className="field field-short">
                     <span>Record payment</span>
-                    <input type="number" min={0} value={paymentDraft || ''} onChange={(event) => setPaymentDraft(Number(event.target.value) || 0)} />
+                    <input type="number" min={0} value={paymentDraft || ''} onChange={(event) => setPaymentDraft(cleanMoney(Number(event.target.value)))} />
                   </label>
                   <div className="customer-detail-row customer-detail-row-stack">
                     <span>Notes</span>
@@ -557,9 +725,25 @@ export const Invoices: React.FC<InvoicesProps> = ({
                   </div>
                 </div>
               </div>
+              <div className="summary-box">
+                <div className="section-subhead">
+                  <h4>Invoice history</h4>
+                  <span>Recent changes and billing actions</span>
+                </div>
+                <div className="linked-record-list">
+                  {selectedInvoiceHistory.length ? selectedInvoiceHistory.map((entry) => (
+                    <div key={entry.id} className="linked-record-row">
+                      <strong>{entry.action}</strong>
+                      <span>{new Date(entry.createdAt).toLocaleString()} · {entry.message}</span>
+                    </div>
+                  )) : <div className="empty">No history yet for this invoice.</div>}
+                </div>
+              </div>
             </div>
             <div className="hero-actions">
+              <button className="ghost" onClick={() => exportInvoicePdf(selectedInvoice)}>Export PDF</button>
               <button className="ghost" onClick={() => recordPayment(selectedInvoice.id)} disabled={paymentDraft <= 0 || selectedInvoice.balanceDue <= 0}>Record payment</button>
+              <button className="ghost" onClick={() => sendPaymentReminder(selectedInvoice)} disabled={selectedInvoice.balanceDue <= 0}>Send reminder</button>
               <button className="ghost" onClick={() => updateInvoiceStatus(selectedInvoice.id, 'Sent')}>Mark sent</button>
               <button className="ghost" onClick={() => updateInvoiceStatus(selectedInvoice.id, 'Partial')}>Mark partial</button>
               <button className="ghost" onClick={() => updateInvoiceStatus(selectedInvoice.id, 'Paid')}>Mark paid</button>

@@ -2,6 +2,7 @@ import { Capacitor } from '@capacitor/core'
 import { CapacitorSQLite, SQLiteConnection, type SQLiteDBConnection } from '@capacitor-community/sqlite'
 import { seedData } from './data'
 import { STORAGE_KEY } from './lib'
+import { normalizeAppData } from './normalization'
 import type { AppData } from './types'
 
 export type StorageDriver = 'sqlite-native' | 'localstorage-browser'
@@ -39,38 +40,6 @@ const STATE_TABLE_SQL = `
 
 let sqliteConnection: SQLiteConnection | null = null
 let databaseConnection: SQLiteDBConnection | null = null
-
-function normalizeAppData(partial?: Partial<AppData> | null): AppData {
-  const normalized: AppData = {
-    companyProfile: partial?.companyProfile ?? seedData.companyProfile,
-    customers: partial?.customers ?? seedData.customers,
-    jobs: partial?.jobs ?? seedData.jobs,
-    estimates: partial?.estimates ?? seedData.estimates,
-    invoices: (partial?.invoices ?? seedData.invoices).map((invoice) => {
-      const amount = Number(invoice.amount) || 0
-      const paidAmount = Math.min(amount, Math.max(0, Number(invoice.paidAmount ?? (invoice.status === 'Paid' ? amount : 0)) || 0))
-      return {
-        ...invoice,
-        paidAmount,
-        balanceDue: Math.max(0, amount - paidAmount),
-      }
-    }),
-    inspections: partial?.inspections ?? seedData.inspections,
-    materialPrices: partial?.materialPrices ?? seedData.materialPrices,
-  }
-
-  const hasCustomerOne = normalized.customers.some((customer) => customer.id === 'cust-1')
-  const hasInspectionForCustomerOne = normalized.inspections.some((inspection) => inspection.customerId === 'cust-1')
-
-  if (hasCustomerOne && !hasInspectionForCustomerOne) {
-    const fallbackInspection = seedData.inspections.find((inspection) => inspection.customerId === 'cust-1')
-    if (fallbackInspection) {
-      normalized.inspections = [fallbackInspection, ...normalized.inspections]
-    }
-  }
-
-  return normalized
-}
 
 function usesSqlitePlatform() {
   return Capacitor.getPlatform() !== 'web'
@@ -230,9 +199,17 @@ export async function getStorageMeta(): Promise<StorageMeta> {
 
 /** Fetch latest material prices from SQLite (if available) */
 export async function getMaterialPrices(): Promise<MaterialPrice[]> {
-  // Only works on native SQLite (desktop/mobile), not in browser-only mode
-  if (!usesSqlitePlatform() && !usesDesktopBridge()) {
-    console.warn('getMaterialPrices only works with native SQLite');
+  if (usesDesktopBridge()) {
+    try {
+      return await window.roofingcrmDesktop!.getLatestMaterialPrices()
+    } catch (err) {
+      console.warn('Could not fetch desktop material_prices:', err)
+      return []
+    }
+  }
+
+  if (!usesSqlitePlatform()) {
+    console.warn('getMaterialPrices only works with native SQLite')
     return []
   }
 

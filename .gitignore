@@ -12,6 +12,8 @@ dist
 dist-ssr
 release
 *.local
+.env
+credentials.json
 
 # Editor directories and files
 .vscode/*

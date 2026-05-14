@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron')
+const { app, BrowserWindow, ipcMain, shell, dialog, screen } = require('electron')
 const fs = require('node:fs/promises')
 const path = require('node:path')
 const os = require('node:os')
@@ -114,19 +114,55 @@ async function ensureDesktopState() {
 async function runMaterialScraper() {
   const scriptPath = path.join(app.getAppPath(), 'scripts', 'scrape-prices.js')
   const dbPath = sqliteFile()
-  const { stdout, stderr } = await execFileAsync(process.execPath, [scriptPath, '--db', dbPath], {
-    cwd: app.getAppPath(),
-    timeout: 300000,
-    windowsHide: true,
-  })
+  try {
+    const { stdout, stderr } = await execFileAsync(process.execPath, [scriptPath, '--db', dbPath], {
+      cwd: app.getAppPath(),
+      timeout: 300000,
+      windowsHide: true,
+    })
 
-  return {
-    ok: true,
-    stdout,
-    stderr,
-    dbPath,
-    ranAt: new Date().toISOString(),
+    return {
+      ok: true,
+      stdout,
+      stderr,
+      dbPath,
+      ranAt: new Date().toISOString(),
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      dbPath,
+      ranAt: new Date().toISOString(),
+      code: typeof error?.code === 'number' ? error.code : null,
+      stdout: typeof error?.stdout === 'string' ? error.stdout : '',
+      stderr: typeof error?.stderr === 'string' ? error.stderr : '',
+      message: error?.message || 'Scraper process failed',
+    }
   }
+}
+
+function getLatestMaterialPrices() {
+  const db = getDatabase()
+  const rows = db.prepare(`
+    SELECT product, price, unit, store, scraped_at
+    FROM material_prices
+    WHERE product IN (
+      'CertainTeed Landmark Shingles',
+      'IKO Dynasty Shingles',
+      'Ice & Water Shield',
+      'Ridge Vent',
+      'Hip & Ridge Cap',
+      'Starters',
+      'Drip Edge'
+    )
+    AND scraped_at = (
+      SELECT MAX(scraped_at) FROM material_prices mp2
+      WHERE mp2.product = material_prices.product
+    )
+    ORDER BY product
+  `).all()
+
+  return rows
 }
 
 async function exportPdf({ html, suggestedName }) {
@@ -167,11 +203,16 @@ async function exportPdf({ html, suggestedName }) {
 }
 
 function createWindow() {
+  const { workAreaSize } = screen.getPrimaryDisplay()
+  const width = Math.max(1180, Math.min(1560, workAreaSize.width - 96))
+  const height = Math.max(820, Math.min(1020, workAreaSize.height - 96))
   const window = new BrowserWindow({
-    width: 1480,
-    height: 920,
-    minWidth: 1180,
+    width,
+    height,
+    minWidth: 1120,
     minHeight: 760,
+    show: false,
+    center: true,
     backgroundColor: '#07111d',
     autoHideMenuBar: true,
     webPreferences: {
@@ -184,6 +225,12 @@ function createWindow() {
   window.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url)
     return { action: 'deny' }
+  })
+
+  window.webContents.setZoomFactor(0.9)
+
+  window.once('ready-to-show', () => {
+    window.show()
   })
 
   if (isDev) {
@@ -225,6 +272,10 @@ app.whenReady().then(() => {
 
   ipcMain.handle('desktop-materials:run-scraper', async () => {
     return runMaterialScraper()
+  })
+
+  ipcMain.handle('desktop-materials:get-latest', async () => {
+    return getLatestMaterialPrices()
   })
 
   createWindow()

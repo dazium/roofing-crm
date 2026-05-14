@@ -1,5 +1,5 @@
 import type { AppData, DamageType, PhotoCategory, Urgency } from '../types';
-import { badgeTone, formatBytes, openAddressInMaps, openEmailClient, openPhoneDialer } from '../lib';
+import { badgeTone, formatBytes, openAddressInMaps, openEmailClient, openPhoneDialer, ROOF_TEMPLATES, roofComplexityLabel } from '../lib';
 import { RoofMathPanel } from '../components/RoofMathPanel';
 
 interface InspectionForm {
@@ -69,9 +69,21 @@ export const Inspect: React.FC<InspectProps> = ({
   const selectedInspection = data.inspections.find((inspection) => inspection.customerId === selectedCustomerId) ?? null;
   const selectedInspectionPhotoBytes = selectedInspection?.photos.reduce((sum, photo) => sum + (photo.sizeBytes ?? 0), 0) ?? 0;
 
+  function clamp(value: number, min: number, max: number) {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function toNonNegative(value: number) {
+    return Number.isFinite(value) ? Math.max(0, value) : 0;
+  }
+
+  function toPercent(value: number) {
+    return Number.isFinite(value) ? clamp(value, 0, 100) : 0;
+  }
+
   function updateCalculator(nextLength: number, nextWidth: number) {
-    const parsedLength = Number(nextLength) || 0;
-    const parsedWidth = Number(nextWidth) || 0;
+    const parsedLength = toNonNegative(Number(nextLength));
+    const parsedWidth = toNonNegative(Number(nextWidth));
     const nextSquares = Number(((parsedLength * parsedWidth) / 100).toFixed(1));
     setInspectionForm({
       ...inspectionForm,
@@ -84,6 +96,25 @@ export const Inspect: React.FC<InspectProps> = ({
   function saveAndContinue() {
     saveInspection();
     goToProposal();
+  }
+
+  function applyRoofTemplate(templateId: string) {
+    const template = ROOF_TEMPLATES.find((item) => item.id === templateId);
+    if (!template) return;
+    setInspectionForm({
+      ...inspectionForm,
+      roofType: template.roofType,
+      pitch: template.pitch,
+      stories: template.stories,
+      calculatorLength: 0,
+      calculatorWidth: 0,
+      squares: template.measurements.squares,
+      ridgeLength: template.measurements.ridgeLength,
+      valleyLength: template.measurements.valleyLength,
+      eavesLength: template.measurements.eavesLength,
+      rakeLength: template.measurements.rakeLength,
+      wasteFactor: template.measurements.wasteFactor,
+    });
   }
 
   return (
@@ -164,6 +195,29 @@ export const Inspect: React.FC<InspectProps> = ({
                 <div className="section-subhead">
                   <h4>Roof details</h4>
                   <span>Basic site and roof information.</span>
+                </div>
+                <div className="split-grid">
+                  <label className="field">
+                    <span>Roof template</span>
+                    <select value="" onChange={(event) => applyRoofTemplate(event.target.value)}>
+                      <option value="">Choose a quick template</option>
+                      {ROOF_TEMPLATES.map((template) => (
+                        <option key={template.id} value={template.id}>{template.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="calculator-result">
+                    <span>Complexity</span>
+                    <strong>{roofComplexityLabel({
+                      squares: inspectionForm.squares,
+                      ridgeLength: inspectionForm.ridgeLength,
+                      valleyLength: inspectionForm.valleyLength,
+                      eavesLength: inspectionForm.eavesLength,
+                      rakeLength: inspectionForm.rakeLength,
+                      wasteFactor: inspectionForm.wasteFactor,
+                    }, inspectionForm.pitch)}</strong>
+                    <small>Based on pitch, valleys, ridge, and waste</small>
+                  </div>
                 </div>
                 <div className="split-grid">
                   <label className="field">
@@ -268,7 +322,7 @@ export const Inspect: React.FC<InspectProps> = ({
                     <input
                       type="number"
                       value={inspectionForm.squares}
-                      onChange={(event) => setInspectionForm({ ...inspectionForm, squares: Number(event.target.value) })}
+                      onChange={(event) => setInspectionForm({ ...inspectionForm, squares: toNonNegative(Number(event.target.value)) })}
                     />
                   </label>
                   <label className="field field-short">
@@ -276,7 +330,7 @@ export const Inspect: React.FC<InspectProps> = ({
                     <input
                       type="number"
                       value={inspectionForm.ridgeLength}
-                      onChange={(event) => setInspectionForm({ ...inspectionForm, ridgeLength: Number(event.target.value) })}
+                      onChange={(event) => setInspectionForm({ ...inspectionForm, ridgeLength: toNonNegative(Number(event.target.value)) })}
                     />
                   </label>
                   <label className="field field-short">
@@ -284,7 +338,7 @@ export const Inspect: React.FC<InspectProps> = ({
                     <input
                       type="number"
                       value={inspectionForm.valleyLength}
-                      onChange={(event) => setInspectionForm({ ...inspectionForm, valleyLength: Number(event.target.value) })}
+                      onChange={(event) => setInspectionForm({ ...inspectionForm, valleyLength: toNonNegative(Number(event.target.value)) })}
                     />
                   </label>
                   <label className="field field-short">
@@ -292,7 +346,7 @@ export const Inspect: React.FC<InspectProps> = ({
                     <input
                       type="number"
                       value={inspectionForm.eavesLength}
-                      onChange={(event) => setInspectionForm({ ...inspectionForm, eavesLength: Number(event.target.value) })}
+                      onChange={(event) => setInspectionForm({ ...inspectionForm, eavesLength: toNonNegative(Number(event.target.value)) })}
                     />
                   </label>
                   <label className="field field-short">
@@ -300,7 +354,7 @@ export const Inspect: React.FC<InspectProps> = ({
                     <input
                       type="number"
                       value={inspectionForm.rakeLength}
-                      onChange={(event) => setInspectionForm({ ...inspectionForm, rakeLength: Number(event.target.value) })}
+                      onChange={(event) => setInspectionForm({ ...inspectionForm, rakeLength: toNonNegative(Number(event.target.value)) })}
                     />
                   </label>
                   <label className="field field-short">
@@ -308,7 +362,7 @@ export const Inspect: React.FC<InspectProps> = ({
                     <input
                       type="number"
                       value={inspectionForm.wasteFactor}
-                      onChange={(event) => setInspectionForm({ ...inspectionForm, wasteFactor: Number(event.target.value) })}
+                      onChange={(event) => setInspectionForm({ ...inspectionForm, wasteFactor: toPercent(Number(event.target.value)) })}
                     />
                   </label>
                 </div>

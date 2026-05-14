@@ -1,12 +1,13 @@
 import { useState, useMemo } from 'react';
 import type { AppData, JobStatus, JobPriority, Job, View } from '../types';
-import { badgeTone, money, openAddressInMaps, openEmailClient, openPhoneDialer } from '../lib';
+import { badgeTone, money, openAddressInMaps, openEmailClient, openPhoneDialer, uid } from '../lib';
 
 interface JobForm {
   title: string;
   status: JobStatus;
   priority: JobPriority;
   scheduledFor: string;
+  crewId: string;
   notes: string;
 }
 
@@ -38,6 +39,7 @@ export const Jobs: React.FC<JobsProps> = ({
     status: 'Scheduled',
     priority: 'Normal',
     scheduledFor: '',
+    crewId: '',
     notes: ''
   });
   const [isEditingJob, setIsEditingJob] = useState(false);
@@ -46,6 +48,7 @@ export const Jobs: React.FC<JobsProps> = ({
     status: 'Scheduled',
     priority: 'Normal',
     scheduledFor: '',
+    crewId: '',
     notes: ''
   });
 
@@ -69,16 +72,12 @@ export const Jobs: React.FC<JobsProps> = ({
   const selectedCustomer = data.customers.find((customer) => customer.id === selectedCustomerId) || null;
   const selectedJob = data.jobs.find((job) => job.id === selectedJobId) || null;
   const selectedJobCustomer = data.customers.find((customer) => customer.id === selectedJob?.customerId) || null;
+  const selectedJobCrew = data.crews.find((crew) => crew.id === selectedJob?.crewId) || null;
   const selectedEstimate = data.estimates.find((estimate) => estimate.jobId === selectedJobId) || null;
   const selectedInvoice = data.invoices.find((invoice) => invoice.jobId === selectedJobId) || null;
   const selectedInspection = data.inspections.find((inspection) => inspection.customerId === selectedJobCustomer?.id) || null;
   const activeJobs = data.jobs.filter((job) => job.status !== 'Complete' && job.status !== 'Paid');
   const highPriorityJobs = data.jobs.filter((job) => job.priority === 'High');
-
-
-  function uid() {
-    return Math.random().toString(36).substring(2) + Date.now().toString(36);
-  }
 
 
   function addJob() {
@@ -91,6 +90,7 @@ export const Jobs: React.FC<JobsProps> = ({
       status: jobForm.status,
       priority: jobForm.priority,
       scheduledFor: jobForm.scheduledFor,
+      crewId: jobForm.crewId || undefined,
       notes: jobForm.notes.trim(),
       createdAt: new Date().toISOString()
     };
@@ -99,10 +99,17 @@ export const Jobs: React.FC<JobsProps> = ({
     setData(nextData);
     selectJob(newJob.id, nextData);
     setView('jobs');
-    setJobForm({ title: '', status: 'Scheduled', priority: 'Normal', scheduledFor: '', notes: '' });
+    setJobForm({ title: '', status: 'Scheduled', priority: 'Normal', scheduledFor: '', crewId: '', notes: '' });
   }
 
   function removeJob(jobId: string) {
+    const job = data.jobs.find((entry) => entry.id === jobId);
+    const confirmed = window.confirm(
+      `Delete ${job?.title ?? 'this project'}? Linked estimates and invoices for this project will also be removed.`
+    );
+
+    if (!confirmed) return;
+
     const nextData = {
       ...data,
       jobs: data.jobs.filter((job) => job.id !== jobId),
@@ -126,6 +133,7 @@ export const Jobs: React.FC<JobsProps> = ({
       status: selectedJob.status,
       priority: selectedJob.priority,
       scheduledFor: selectedJob.scheduledFor,
+      crewId: selectedJob.crewId ?? '',
       notes: selectedJob.notes,
     });
     setIsEditingJob(true);
@@ -147,6 +155,7 @@ export const Jobs: React.FC<JobsProps> = ({
             status: jobEditForm.status,
             priority: jobEditForm.priority,
             scheduledFor: jobEditForm.scheduledFor,
+            crewId: jobEditForm.crewId || undefined,
             notes: jobEditForm.notes.trim(),
           }
         : job),
@@ -237,6 +246,17 @@ export const Jobs: React.FC<JobsProps> = ({
                   onChange={(event) => setJobForm({ ...jobForm, scheduledFor: event.target.value })}
                 />
               </label>
+              <label className="field field-compact">
+                <span>Crew</span>
+                <select value={jobForm.crewId} onChange={(event) => setJobForm({ ...jobForm, crewId: event.target.value })}>
+                  <option value="">Unassigned</option>
+                  {data.crews.map((crew) => (
+                    <option key={crew.id} value={crew.id}>
+                      {crew.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label className="field compact-textarea">
                 <span>Job notes</span>
                 <textarea
@@ -300,6 +320,10 @@ export const Jobs: React.FC<JobsProps> = ({
               <div className="mini-stat-card">
                 <span>Inspection</span>
                 <strong>{selectedInspection ? selectedInspection.damageType : 'None'}</strong>
+              </div>
+              <div className="mini-stat-card">
+                <span>Crew</span>
+                <strong>{selectedJobCrew?.name ?? 'Unassigned'}</strong>
               </div>
               <div className="mini-stat-card">
                 <span>Open items</span>
@@ -456,6 +480,17 @@ export const Jobs: React.FC<JobsProps> = ({
                     <span>Scheduled date</span>
                     <input type="date" value={jobEditForm.scheduledFor} onChange={(event) => setJobEditForm({ ...jobEditForm, scheduledFor: event.target.value })} />
                   </label>
+                  <label className="field field-compact">
+                    <span>Crew</span>
+                    <select value={jobEditForm.crewId} onChange={(event) => setJobEditForm({ ...jobEditForm, crewId: event.target.value })}>
+                      <option value="">Unassigned</option>
+                      {data.crews.map((crew) => (
+                        <option key={crew.id} value={crew.id}>
+                          {crew.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <label className="field">
                     <span>Notes</span>
                     <textarea value={jobEditForm.notes} onChange={(event) => setJobEditForm({ ...jobEditForm, notes: event.target.value })} />
@@ -520,6 +555,7 @@ export const Jobs: React.FC<JobsProps> = ({
           <div className="job-board-list">
             {filteredJobs.map((job) => {
               const customer = data.customers.find((entry) => entry.id === job.customerId);
+              const crew = data.crews.find((entry) => entry.id === job.crewId);
               const estimate = data.estimates.find((entry) => entry.jobId === job.id);
               const invoice = data.invoices.find((entry) => entry.jobId === job.id);
               return (
@@ -547,6 +583,7 @@ export const Jobs: React.FC<JobsProps> = ({
                       <span>{customer?.name ?? 'Unknown customer'}</span>
                       <span>{job.scheduledFor || 'No date set'}</span>
                       <span>{job.priority} priority</span>
+                      <span>{crew?.name ?? 'No crew'}</span>
                     </div>
                     <small>{job.notes || 'No notes yet'}</small>
                     <div className="job-tile-meta-row">

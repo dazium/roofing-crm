@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { AppData, Customer, LeadStatus, View } from '../types';
-import { badgeTone, openAddressInMaps, openEmailClient, openPhoneDialer } from '../lib';
+import { LEAD_STATUS_FLOW, allowedLeadStatusTransitions, badgeTone, canTransitionLeadStatus, openAddressInMaps, openEmailClient, openPhoneDialer, recommendedLeadStatus, uid, validateLeadWorkflowStatus } from '../lib';
 
 interface CustomerForm {
   name: string;
@@ -77,6 +77,17 @@ export const Customers: React.FC<CustomersProps> = ({
   const customerInvoices = data.invoices.filter((invoice) => customerJobIds.includes(invoice.jobId));
   const openJobs = customerJobs.filter((job) => !['Complete', 'Paid'].includes(job.status));
   const unpaidInvoices = customerInvoices.filter((invoice) => invoice.status !== 'Paid');
+  const leadWorkflowContext = {
+    hasJob: customerJobs.length > 0,
+    hasInspection: customerInspections.length > 0,
+    hasEstimate: customerEstimates.length > 0,
+    hasInvoice: customerInvoices.length > 0,
+    hasPaidInvoice: customerInvoices.some((invoice) => invoice.status === 'Paid'),
+  };
+  const recommendedStatus = recommendedLeadStatus(leadWorkflowContext);
+  const leadStatusValidation = validateLeadWorkflowStatus(selectedCustomer?.leadStatus ?? 'New Lead', leadWorkflowContext);
+  const editableLeadOptions = selectedCustomer ? allowedLeadStatusTransitions(selectedCustomer.leadStatus) : LEAD_STATUS_FLOW;
+  const canConvertLeadToJob = Boolean(selectedCustomer && customerJobs.length === 0 && selectedCustomer.leadStatus !== 'Lost');
   const latestJob = customerJobs[0] ?? null;
   const latestInspection = customerInspections[0] ?? null;
   const latestEstimate = customerEstimates[0] ?? null;
@@ -113,7 +124,15 @@ export const Customers: React.FC<CustomersProps> = ({
   }
 
   function removeCustomer(customerId: string) {
-    const jobIds = data.jobs.filter((job) => job.customerId === customerId).map((job) => job.id);
+    const customer = data.customers.find((entry) => entry.id === customerId);
+    const relatedJobs = data.jobs.filter((job) => job.customerId === customerId);
+    const confirmed = window.confirm(
+      `Delete ${customer?.name ?? 'this customer'}? This will also remove ${relatedJobs.length} linked project(s), related inspections, estimates, and invoices.`
+    );
+
+    if (!confirmed) return;
+
+    const jobIds = relatedJobs.map((job) => job.id);
     const nextData = {
       ...data,
       customers: data.customers.filter((customer) => customer.id !== customerId),
@@ -148,6 +167,18 @@ export const Customers: React.FC<CustomersProps> = ({
   function saveCustomerEdits() {
     if (!selectedCustomer) return;
     if (!customerEditForm.name.trim() || !customerEditForm.address.trim()) return;
+    if (!canTransitionLeadStatus(selectedCustomer.leadStatus, customerEditForm.leadStatus)) {
+      window.alert(`Lead status transition "${selectedCustomer.leadStatus}" -> "${customerEditForm.leadStatus}" is blocked by the workflow guard.`);
+      return;
+    }
+
+    let nextLeadStatus = customerEditForm.leadStatus;
+    const nextStatusValidation = validateLeadWorkflowStatus(nextLeadStatus, leadWorkflowContext);
+    if (!nextStatusValidation.valid) {
+      const useRecommended = window.confirm(`${nextStatusValidation.message}\n\nSet status to "${recommendedStatus}" instead?`);
+      if (!useRecommended) return;
+      nextLeadStatus = recommendedStatus;
+    }
 
     const nextData = {
       ...data,
@@ -159,7 +190,7 @@ export const Customers: React.FC<CustomersProps> = ({
             email: customerEditForm.email.trim(),
             address: customerEditForm.address.trim(),
             notes: customerEditForm.notes.trim(),
-            leadStatus: customerEditForm.leadStatus,
+            leadStatus: nextLeadStatus,
             source: customerEditForm.source.trim() || 'Facebook',
           }
         : customer),
@@ -168,10 +199,6 @@ export const Customers: React.FC<CustomersProps> = ({
     setData(nextData);
     selectCustomer(selectedCustomer.id);
     setIsEditingCustomer(false);
-  }
-
-  function uid() {
-    return Math.random().toString(36).substring(2) + Date.now().toString(36);
   }
 
   return (
@@ -368,6 +395,21 @@ export const Customers: React.FC<CustomersProps> = ({
               </div>
             </div>
 
+            {canConvertLeadToJob && (
+              <div className="workflow-callout">
+                <strong>Convert lead to active job</strong>
+                <span>No job record exists yet for this customer. Move to Jobs to create the first project and tie inspection/estimate/invoice records to it.</span>
+              </div>
+            )}
+            <div className="workflow-callout">
+              <strong>Lead workflow check</strong>
+              <span>
+                {leadStatusValidation.valid
+                  ? `Current status is consistent. Recommended stage: ${recommendedStatus}.`
+                  : `${leadStatusValidation.message} Recommended stage: ${recommendedStatus}.`}
+              </span>
+            </div>
+
             <div className="linked-records-grid">
               <div className="summary-box project-summary-box">
                 <div className="section-subhead">
@@ -435,12 +477,9 @@ export const Customers: React.FC<CustomersProps> = ({
                     <label className="field">
                       <span>Lead status</span>
                       <select value={customerEditForm.leadStatus} onChange={(event) => setCustomerEditForm({ ...customerEditForm, leadStatus: event.target.value as LeadStatus })}>
-                        <option>New Lead</option>
-                        <option>Contacted</option>
-                        <option>Inspection Scheduled</option>
-                        <option>Estimate Sent</option>
-                        <option>Won</option>
-                        <option>Lost</option>
+                        {editableLeadOptions.map((status) => (
+                          <option key={status}>{status}</option>
+                        ))}
                       </select>
                     </label>
                     <label className="field">
@@ -489,6 +528,11 @@ export const Customers: React.FC<CustomersProps> = ({
             />
           </div>
           <div className="list-grid">
+            {data.customers.length === 0 && (
+              <div className="empty">
+                No customers yet. Add your first homeowner above, then run the flow: customer to inspection to estimate to invoice to tasks.
+              </div>
+            )}
             {filteredCustomers.map((customer) => (
               <div
                 key={customer.id}
