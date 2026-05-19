@@ -81,6 +81,18 @@ async function getDatabase() {
       updated_at TEXT DEFAULT (datetime('now'))
     )
   `);
+  // Create time_logs table if it doesn't exist
+  await databaseConnection.execute(`
+    CREATE TABLE IF NOT EXISTS time_logs (
+      id TEXT PRIMARY KEY,
+      crew_id TEXT NOT NULL,
+      date TEXT NOT NULL,
+      entries TEXT NOT NULL,
+      total_minutes INTEGER NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
   return databaseConnection
 }
 

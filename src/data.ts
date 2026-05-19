@@ -148,4 +148,5 @@ export const seedData: AppData & { tasks: ProjectTask[] } = {
       updatedAt: new Date().toISOString(),
     },
   ],
+  timeLogs: [],
 }

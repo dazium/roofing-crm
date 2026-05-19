@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { AppData, View } from '../types';
 import { badgeTone, money, openAddressInMaps, openEmailClient, openPhoneDialer } from '../lib';
+import { TimeTracking } from '../components/TimeTracking';
 
 interface CrewModeProps {
   data: AppData;
@@ -11,6 +12,7 @@ interface CrewModeProps {
   setPhotoLabel: React.Dispatch<React.SetStateAction<string>>;
   cameraInputRef: React.RefObject<HTMLInputElement | null>;
   handlePhotoUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onDataUpdate: (nextData: AppData) => void;
 }
 
 export const CrewMode: React.FC<CrewModeProps> = ({
@@ -22,6 +24,7 @@ export const CrewMode: React.FC<CrewModeProps> = ({
   setPhotoLabel,
   cameraInputRef,
   handlePhotoUpload,
+  onDataUpdate,
 }) => {
   const initialCrewId = data.jobs.find((job) => job.id === selectedJobId)?.crewId ?? data.crews.find((crew) => crew.status === 'Active')?.id ?? data.crews[0]?.id ?? '';
   const [selectedCrewId, setSelectedCrewId] = useState(initialCrewId);
@@ -97,6 +100,20 @@ export const CrewMode: React.FC<CrewModeProps> = ({
             <div className="empty">Create a crew first, then assign projects to that crew.</div>
           )}
         </div>
+
+        {selectedCrew && (
+          <div className="card crew-mode-panel">
+            <div className="section-head">
+              <h3>Time Tracking</h3>
+              <span>Punch in/out for {selectedCrew.name}</span>
+            </div>
+            <TimeTracking
+              data={data}
+              selectedCrewId={selectedCrewId}
+              onUpdate={onDataUpdate}
+            />
+          </div>
+        )}
 
         <div className="card crew-mode-panel">
           <div className="section-head">

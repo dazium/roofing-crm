@@ -272,6 +272,7 @@ export default function App() {
         crews: Array.isArray(parsed.crews) ? parsed.crews : seedData.crews,
         appointments: Array.isArray(parsed.appointments) ? parsed.appointments : seedData.appointments,
         damages: Array.isArray(parsed.damages) ? parsed.damages : seedData.damages,
+        timeLogs: Array.isArray(parsed.timeLogs) ? parsed.timeLogs : seedData.timeLogs,
       };
 
       setData(importedData);
@@ -755,6 +756,7 @@ export default function App() {
               setPhotoLabel={setPhotoLabel}
               cameraInputRef={cameraInputRef}
               handlePhotoUpload={handlePhotoUpload}
+              onDataUpdate={setData}
             />
           )}
         </div>

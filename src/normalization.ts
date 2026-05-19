@@ -24,6 +24,7 @@ export function normalizeAppData(partial?: Partial<AppData> | null): AppData {
     crews: partial?.crews ?? seedData.crews,
     appointments: partial?.appointments ?? seedData.appointments,
     damages: partial?.damages ?? seedData.damages,
+    timeLogs: partial?.timeLogs ?? seedData.timeLogs,
   }
 
   const hasCustomerOne = normalized.customers.some((customer) => customer.id === 'cust-1')

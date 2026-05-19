@@ -136,5 +136,24 @@ export type AppData = {
   crews: Crew[];
   appointments: Appointment[];
   damages: DamageRecord[];
+  timeLogs: TimeLog[];
 }
+export type TimeEntry = {
+  id: string;
+  crewId: string;
+  date: string; // ISO date string (YYYY-MM-DD)
+  punchInTime: string; // ISO timestamp
+  punchOutTime?: string; // ISO timestamp (optional, null if still clocked in)
+  durationMinutes?: number; // calculated duration
+  notes?: string;
+}
+
+export type TimeLog = {
+  id: string;
+  crewId: string;
+  date: string; // ISO date string (YYYY-MM-DD)
+  entries: TimeEntry[];
+  totalMinutes: number; // total minutes for the day
+}
+
 export type PlaneStats = { rawArea: number; slopeFactor: number; adjustedArea: number; squares: number }
