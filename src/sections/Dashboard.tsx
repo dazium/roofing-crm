@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { AppData, View } from '../types';
 import { money, openAddressInMaps, openEmailClient, openPhoneDialer } from '../lib';
+import { fetchJobWeather, type JobWeatherSnapshot } from '../weather';
 
 interface DashboardProps {
   data: AppData;
@@ -40,6 +41,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onOpenInvoices,
   onOpenTasks,
 }) => {
+  const [weather, setWeather] = useState<JobWeatherSnapshot | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
+
   const selectedCustomer = useMemo(
     () => data.customers.find((customer) => customer.id === selectedCustomerId) ?? null,
     [data.customers, selectedCustomerId]
@@ -70,6 +75,41 @@ export const Dashboard: React.FC<DashboardProps> = ({
   );
 
   const openInvoice = selectedInvoices.find((invoice) => invoice.balanceDue > 0) ?? selectedInvoices[0] ?? null;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadWeather() {
+      const address = selectedCustomer?.address;
+      if (!address) {
+        setWeather(null);
+        setWeatherError(null);
+        setWeatherLoading(false);
+        return;
+      }
+
+      setWeatherLoading(true);
+      setWeatherError(null);
+
+      try {
+        const nextWeather = await fetchJobWeather(address, selectedJob?.scheduledFor || undefined);
+        if (!cancelled) setWeather(nextWeather);
+      } catch (error) {
+        if (!cancelled) {
+          setWeather(null);
+          setWeatherError(error instanceof Error ? error.message : 'Could not load weather');
+        }
+      } finally {
+        if (!cancelled) setWeatherLoading(false);
+      }
+    }
+
+    void loadWeather();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCustomer?.address, selectedJob?.scheduledFor]);
 
   const dashboard = useMemo(() => {
     const openCustomers = data.customers.filter((customer) => !['Won', 'Lost'].includes(customer.leadStatus)).length;
@@ -353,6 +393,33 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <span>Project notes</span>
               <strong>{selectedJob?.notes?.trim() || 'No project notes yet'}</strong>
             </div>
+          </div>
+
+          <div className="summary-box project-summary-box">
+            <div className="section-subhead">
+              <h4>Weather outlook</h4>
+              <span>{selectedJob?.scheduledFor ? `Forecast around ${selectedJob.scheduledFor}` : 'Current + next few days'}</span>
+            </div>
+            {weatherLoading ? (
+              <div className="empty">Loading weather...</div>
+            ) : weatherError ? (
+              <div className="empty">{weatherError}</div>
+            ) : weather ? (
+              <div className="linked-record-list forecast-list">
+                <div className="linked-record-row">
+                  <strong>{weather.cityLabel}</strong>
+                  <span>{weather.summary} · {weather.currentTempC != null ? `${Math.round(weather.currentTempC)}°C` : 'N/A'} · {weather.roofingRisk}</span>
+                </div>
+                {weather.daily.map((day) => (
+                  <div key={day.date} className="linked-record-row">
+                    <strong>{day.date}</strong>
+                    <span>{day.summary} · {day.highTempC != null && day.lowTempC != null ? `${Math.round(day.highTempC)}°/${Math.round(day.lowTempC)}°` : 'N/A'} · Rain {day.rainChance != null ? `${day.rainChance}%` : 'N/A'}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty">No weather yet.</div>
+            )}
           </div>
 
           <div className="hero-actions">

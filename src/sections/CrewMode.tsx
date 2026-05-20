@@ -45,6 +45,9 @@ export const CrewMode: React.FC<CrewModeProps> = ({
   const tasks = data.tasks.filter((task) => selectedJob ? task.jobId === selectedJob.id || (!task.jobId && task.customerId === selectedJob.customerId) : false);
   const linkedPhotoIds = new Set(damages.flatMap((damage) => damage.linkedPhotoIds));
   const relevantPhotos = inspection?.photos.filter((photo) => linkedPhotoIds.has(photo.id) || photo.category === 'Before' || photo.category === 'Progress' || photo.category === 'After') ?? [];
+  const openTasks = tasks.filter((task) => task.status !== 'Done').length;
+  const progressPhotos = inspection?.photos.filter((photo) => photo.category === 'Progress').length ?? 0;
+  const nextJob = activeAssignedJobs[0] ?? selectedJob;
 
   useEffect(() => {
     if (selectedJob && selectedJob.id !== selectedJobId) {
@@ -64,12 +67,119 @@ export const CrewMode: React.FC<CrewModeProps> = ({
   }
 
   return (
-    <section className="content-grid two-col crew-mode-layout">
+    <>
+      <section className="hero-grid workspace-hero-grid crew-mode-hero-grid">
+        <div className="card hero-card workspace-hero-card">
+          <div className="section-head">
+            <div>
+              <span className="pill pill-blue">Crew workspace</span>
+              <h2>{selectedCrew?.name ?? 'Select a crew'}</h2>
+              <p>
+                {selectedJob && customer
+                  ? `${selectedJob.title} · ${customer.name} · ${selectedJob.status}`
+                  : 'Pick a crew to see assigned jobs, field notes, photos, tasks, and customer contact actions.'}
+              </p>
+            </div>
+            <div className="workspace-status-row">
+              {selectedCrew ? <span className={`pill pill-${badgeTone(selectedCrew.status)}`}>{selectedCrew.status}</span> : null}
+              {selectedJob ? <span className={`pill pill-${badgeTone(selectedJob.priority)}`}>{selectedJob.priority}</span> : null}
+            </div>
+          </div>
+
+          <div className="workspace-meta-grid">
+            <div className="workspace-meta-item">
+              <span>Crew lead</span>
+              <strong>{selectedCrew?.crewLead ?? 'Unset'}</strong>
+            </div>
+            <div className="workspace-meta-item">
+              <span>Current project</span>
+              <strong>{selectedJob?.title ?? 'No job selected'}</strong>
+            </div>
+            <div className="workspace-meta-item">
+              <span>Customer</span>
+              <strong>{customer?.name ?? 'No customer selected'}</strong>
+            </div>
+            <div className="workspace-meta-item">
+              <span>Address</span>
+              <strong>
+                {customer?.address ? (
+                  <button type="button" className="address-link" onClick={() => openAddressInMaps(customer.address)}>
+                    {customer.address}
+                  </button>
+                ) : 'No address yet'}
+              </strong>
+            </div>
+          </div>
+
+          <div className="hero-actions">
+            <button className="ghost" onClick={() => customer?.phone && openPhoneDialer(customer.phone)} disabled={!customer?.phone}>Call customer</button>
+            <button className="ghost" onClick={() => customer?.email && openEmailClient(customer.email)} disabled={!customer?.email}>Email customer</button>
+            <button className="ghost" onClick={() => customer?.address && openAddressInMaps(customer.address)} disabled={!customer?.address}>Open map</button>
+            <button onClick={captureProgressPhoto} disabled={!selectedJob || !customer}>Progress photo</button>
+          </div>
+        </div>
+
+        <div className="card workspace-focus-card">
+          <div className="section-head">
+            <div>
+              <h3>Next crew action</h3>
+              <span>Keep the field packet moving</span>
+            </div>
+          </div>
+          <div className="workflow-callout">
+            <strong>{nextJob ? nextJob.title : 'Assign the first job'}</strong>
+            <span>
+              {nextJob
+                ? `${activeAssignedJobs.length} active job(s), ${openTasks} open task(s), and ${damages.length} damage record(s) for this packet.`
+                : 'No active jobs are assigned to this crew yet.'}
+            </span>
+          </div>
+          <div className="linked-record-list workspace-links-list">
+            {assignedJobs.length ? assignedJobs.slice(0, 4).map((job) => {
+              const jobCustomer = data.customers.find((entry) => entry.id === job.customerId);
+              return (
+                <button key={job.id} className="linked-record-row linked-record-action dashboard-activity-row" onClick={() => openJob(job.id)}>
+                  <strong>{job.title}</strong>
+                  <span>{jobCustomer?.name ?? 'Unknown customer'} · {job.status}</span>
+                  <small>{job.scheduledFor || 'No date set'}</small>
+                </button>
+              );
+            }) : (
+              <div className="empty">No assigned jobs yet.</div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="stats-grid dashboard-priority-grid crew-mode-stats-grid">
+        <div className="card stat-card">
+          <span>Assigned jobs</span>
+          <strong>{assignedJobs.length}</strong>
+          <small>Total jobs for selected crew</small>
+        </div>
+        <div className="card stat-card">
+          <span>Active jobs</span>
+          <strong>{activeAssignedJobs.length}</strong>
+          <small>Not complete or paid</small>
+        </div>
+        <div className="card stat-card">
+          <span>Open tasks</span>
+          <strong>{openTasks}</strong>
+          <small>For the selected job packet</small>
+        </div>
+        <div className="card stat-card">
+          <span>Progress photos</span>
+          <strong>{progressPhotos}</strong>
+          <small>Captured from the field</small>
+        </div>
+      </section>
+
+      <section className="content-grid two-col crew-mode-layout dashboard-detail-grid">
       <div className="column-stack">
         <div className="card crew-mode-panel">
           <div className="section-head">
             <h3>Crew Mode</h3>
-            <span>Mobile-first job view adapted from Rooftop Renovators</span>
+            <span>Field job view matched to the dashboard workspace</span>
           </div>
           <label className="field">
             <span>Crew</span>
@@ -269,7 +379,8 @@ export const CrewMode: React.FC<CrewModeProps> = ({
             <div className="empty">Select a crew with assigned jobs to open the field packet.</div>
           </div>
         )}
-      </div>
-    </section>
+        </div>
+      </section>
+    </>
   );
 };

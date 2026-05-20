@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import type { AppData, Customer, LeadStatus, View } from '../types';
+import type { AppData, Customer, Job, LeadStatus, View } from '../types';
 import { LEAD_STATUS_FLOW, allowedLeadStatusTransitions, badgeTone, canTransitionLeadStatus, openAddressInMaps, openEmailClient, openPhoneDialer, recommendedLeadStatus, uid, validateLeadWorkflowStatus } from '../lib';
 
 interface CustomerForm {
@@ -89,6 +89,25 @@ export const Customers: React.FC<CustomersProps> = ({
   const editableLeadOptions = selectedCustomer ? allowedLeadStatusTransitions(selectedCustomer.leadStatus) : LEAD_STATUS_FLOW;
   const canConvertLeadToJob = Boolean(selectedCustomer && customerJobs.length === 0 && selectedCustomer.leadStatus !== 'Lost');
   const latestJob = customerJobs[0] ?? null;
+
+  function convertLeadToJob() {
+    if (!selectedCustomer) return;
+    const newJob: Job = {
+      id: uid(),
+      customerId: selectedCustomer.id,
+      title: `${selectedCustomer.name} - Roof Project`,
+      status: 'Scheduled',
+      priority: 'Normal',
+      scheduledFor: '',
+      notes: '',
+      createdAt: new Date().toISOString(),
+    };
+    const nextData = { ...data, jobs: [newJob, ...data.jobs] };
+    setData(nextData);
+    selectJob(newJob.id, nextData);
+    setView('jobs');
+  }
+
   const latestInspection = customerInspections[0] ?? null;
   const latestEstimate = customerEstimates[0] ?? null;
   const latestInvoice = customerInvoices[0] ?? null;
@@ -397,8 +416,9 @@ export const Customers: React.FC<CustomersProps> = ({
 
             {canConvertLeadToJob && (
               <div className="workflow-callout">
-                <strong>Convert lead to active job</strong>
-                <span>No job record exists yet for this customer. Move to Jobs to create the first project and tie inspection/estimate/invoice records to it.</span>
+                <strong className="callout-title">Convert lead to active job</strong>
+                <span className="callout-text">No job record exists yet for this customer. Create a project to begin scheduling and pricing.</span>
+                <button className="callout-btn" onClick={convertLeadToJob}>Create Project Now</button>
               </div>
             )}
             <div className="workflow-callout">

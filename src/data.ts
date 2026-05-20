@@ -81,6 +81,11 @@ export const seedData: AppData & { tasks: ProjectTask[] } = {
       id: 'crew-1',
       name: 'Crew Alpha',
       crewLead: 'Matt',
+      members: [
+        { id: 'crew-1-member-1', name: 'Matt', role: 'Lead installer', phone: '519-555-2201' },
+        { id: 'crew-1-member-2', name: 'Owen', role: 'Shingle installer' },
+        { id: 'crew-1-member-3', name: 'Luis', role: 'Ground cleanup' },
+      ],
       phone: '519-555-2201',
       email: 'crew.alpha@example.com',
       status: 'Active',
@@ -92,6 +97,10 @@ export const seedData: AppData & { tasks: ProjectTask[] } = {
       id: 'crew-2',
       name: 'Crew Repair Team',
       crewLead: 'Nina',
+      members: [
+        { id: 'crew-2-member-1', name: 'Nina', role: 'Repair lead', phone: '519-555-2202' },
+        { id: 'crew-2-member-2', name: 'Sam', role: 'Flashing repair' },
+      ],
       phone: '519-555-2202',
       email: 'crew.repairs@example.com',
       status: 'Active',

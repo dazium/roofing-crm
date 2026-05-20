@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { AppData, JobStatus, JobPriority, Job, View } from '../types';
 import { badgeTone, money, openAddressInMaps, openEmailClient, openPhoneDialer, uid } from '../lib';
+import { fetchJobWeather, type JobWeatherSnapshot } from '../weather';
 
 interface JobForm {
   title: string;
@@ -51,6 +52,9 @@ export const Jobs: React.FC<JobsProps> = ({
     crewId: '',
     notes: ''
   });
+  const [weather, setWeather] = useState<JobWeatherSnapshot | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
 
   const customerJobs = useMemo(
     () => data.jobs.filter((job) => job.customerId === selectedCustomerId),
@@ -79,6 +83,43 @@ export const Jobs: React.FC<JobsProps> = ({
   const activeJobs = data.jobs.filter((job) => job.status !== 'Complete' && job.status !== 'Paid');
   const highPriorityJobs = data.jobs.filter((job) => job.priority === 'High');
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadWeather() {
+      if (!selectedJobCustomer?.address) {
+        setWeather(null);
+        setWeatherError(null);
+        setWeatherLoading(false);
+        return;
+      }
+
+      setWeatherLoading(true);
+      setWeatherError(null);
+
+      try {
+        const nextWeather = await fetchJobWeather(selectedJobCustomer.address, selectedJob?.scheduledFor || undefined);
+        if (!cancelled) {
+          setWeather(nextWeather);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setWeather(null);
+          setWeatherError(error instanceof Error ? error.message : 'Could not load weather');
+        }
+      } finally {
+        if (!cancelled) {
+          setWeatherLoading(false);
+        }
+      }
+    }
+
+    void loadWeather();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedJob?.scheduledFor, selectedJobCustomer?.address]);
 
   function addJob() {
     if (!selectedCustomerId || !jobForm.title.trim()) return;
@@ -396,6 +437,64 @@ export const Jobs: React.FC<JobsProps> = ({
                     <strong>{selectedInspection ? selectedInspection.urgency : 'N/A'}</strong>
                   </div>
                 </div>
+              </div>
+
+              <div className="summary-box project-summary-box">
+                <div className="section-subhead">
+                  <h4>Weather</h4>
+                  <span>{selectedJob.scheduledFor ? `Forecast for ${selectedJob.scheduledFor}` : 'Current conditions for this address'}</span>
+                </div>
+                {weatherLoading ? (
+                  <div className="empty">Loading weather...</div>
+                ) : weatherError ? (
+                  <div className="empty">{weatherError}</div>
+                ) : weather ? (
+                  <div className="customer-detail-grid">
+                    <div className="customer-detail-row">
+                      <span>Location</span>
+                      <strong>{weather.cityLabel}</strong>
+                    </div>
+                    <div className="customer-detail-row">
+                      <span>Conditions</span>
+                      <strong>{weather.summary}</strong>
+                    </div>
+                    <div className="customer-detail-row">
+                      <span>Current</span>
+                      <strong>{weather.currentTempC != null ? `${Math.round(weather.currentTempC)}°C` : 'N/A'}</strong>
+                    </div>
+                    <div className="customer-detail-row">
+                      <span>High / low</span>
+                      <strong>{weather.highTempC != null && weather.lowTempC != null ? `${Math.round(weather.highTempC)}° / ${Math.round(weather.lowTempC)}°` : 'N/A'}</strong>
+                    </div>
+                    <div className="customer-detail-row">
+                      <span>Rain chance</span>
+                      <strong>{weather.rainChance != null ? `${weather.rainChance}%` : 'N/A'}</strong>
+                    </div>
+                    <div className="customer-detail-row">
+                      <span>Wind</span>
+                      <strong>{weather.currentWindKph != null ? `${Math.round(weather.currentWindKph)} km/h` : 'N/A'}</strong>
+                    </div>
+                    <div className="customer-detail-row customer-detail-row-stack">
+                      <span>Roofing read</span>
+                      <strong>{weather.roofingRisk}</strong>
+                    </div>
+                    <div className="customer-detail-row customer-detail-row-stack">
+                      <span>Next few days</span>
+                      <strong>
+                        <div className="linked-record-list forecast-list">
+                          {weather.daily.map((day) => (
+                            <div key={day.date} className="linked-record-row">
+                              <strong>{day.date}</strong>
+                              <span>{day.summary} · {day.highTempC != null && day.lowTempC != null ? `${Math.round(day.highTempC)}°/${Math.round(day.lowTempC)}°` : 'N/A'} · Rain {day.rainChance != null ? `${day.rainChance}%` : 'N/A'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </strong>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="empty">No weather loaded yet.</div>
+                )}
               </div>
 
               <div className="summary-box project-summary-box span-2">

@@ -106,6 +106,12 @@ button:hover {
   filter: brightness(1.04);
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.54;
+  filter: none;
+}
+
 #root {
   min-height: 100vh;
 }
@@ -648,6 +654,48 @@ button:hover {
   gap: 10px;
 }
 
+.crew-member-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.crew-member-form button,
+.crew-member-form input:nth-child(5) {
+  grid-column: 1 / -1;
+}
+
+.crew-member-list,
+.crew-roster-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.crew-member-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.crew-member-row div {
+  display: grid;
+  gap: 3px;
+}
+
+.crew-member-row span,
+.crew-member-row small,
+.crew-roster-list span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .selection-block {
   border-color: rgba(74, 130, 255, 0.28);
   background: linear-gradient(180deg, rgba(47, 107, 255, 0.08), rgba(255, 255, 255, 0.025));
@@ -1110,6 +1158,11 @@ button:hover {
   align-items: start;
 }
 
+.crew-mode-hero-grid,
+.crew-mode-stats-grid {
+  margin-bottom: 12px;
+}
+
 .crew-mode-panel {
   border-radius: 14px;
 }
@@ -1129,8 +1182,8 @@ button:hover {
 
 .crew-job-card.active,
 .crew-job-card:hover {
-  border-color: rgba(255, 122, 26, 0.5);
-  background: rgba(255, 122, 26, 0.08);
+  border-color: rgba(74, 130, 255, 0.42);
+  background: rgba(47, 107, 255, 0.08);
 }
 
 .crew-job-card small,
@@ -1688,6 +1741,16 @@ button.ghost.danger {
   .job-board-meta {
     justify-items: start;
     text-align: left;
+  }
+
+  .crew-member-form,
+  .crew-member-row {
+    grid-template-columns: 1fr;
+  }
+
+  .crew-member-row {
+    display: grid;
+    align-items: stretch;
   }
 
   .customer-detail-row,

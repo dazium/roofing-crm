@@ -10,12 +10,13 @@
     "dev": "vite",
     "dev:desktop": "vite --host 127.0.0.1 --port 4173 --strictPort",
     "build": "tsc -b && vite build",
+    "clean:release": "node -e \"require('fs').rmSync('release',{recursive:true,force:true})\"",
     "android:debug": "scripts\\android-debug.cmd",
     "android:release": "scripts\\android-release.cmd",
     "desktop:attach": "cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:4173 electron .",
     "desktop:dev": "concurrently --success first \"npm run dev:desktop\" \"wait-on tcp:127.0.0.1:4173 && npm run desktop:attach\"",
     "desktop:dev:attach": "wait-on tcp:127.0.0.1:4173 && npm run desktop:attach",
-    "desktop:build": "npm run build && electron-builder --win nsis",
+    "desktop:build": "npm run build && npm run clean:release && electron-builder --win nsis --publish never",
     "lint": "eslint .",
     "test": "vitest run",
     "test:e2e": "playwright test",
@@ -56,6 +57,7 @@
   "build": {
     "appId": "com.daziu.roofingcrm.desktop",
     "productName": "RoofingCRM",
+    "artifactName": "${productName} Setup ${version}.${ext}",
     "directories": {
       "output": "release"
     },
@@ -80,7 +82,10 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "shortcutName": "RoofingCRM"
+      "shortcutName": "RoofingCRM",
+      "deleteAppDataOnUninstall": false,
+      "displayLanguageSelector": false,
+      "warningsAsErrors": false
     }
   }
 }

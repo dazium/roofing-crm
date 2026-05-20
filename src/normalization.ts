@@ -21,7 +21,10 @@ export function normalizeAppData(partial?: Partial<AppData> | null): AppData {
     materialPrices: partial?.materialPrices ?? seedData.materialPrices,
     materialPriceHistory: partial?.materialPriceHistory ?? [],
     tasks: partial?.tasks ?? seedData.tasks,
-    crews: partial?.crews ?? seedData.crews,
+    crews: (partial?.crews ?? seedData.crews).map((crew) => ({
+      ...crew,
+      members: Array.isArray(crew.members) ? crew.members : [],
+    })),
     appointments: partial?.appointments ?? seedData.appointments,
     damages: partial?.damages ?? seedData.damages,
     timeLogs: partial?.timeLogs ?? seedData.timeLogs,

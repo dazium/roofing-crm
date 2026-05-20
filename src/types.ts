@@ -82,12 +82,21 @@ export type Crew = {
   id: string;
   name: string;
   crewLead?: string;
+  members: CrewMember[];
   phone?: string;
   email?: string;
   status: CrewStatus;
   notes?: string;
   createdAt: string;
   updatedAt: string;
+}
+export type CrewMember = {
+  id: string;
+  name: string;
+  role?: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
 }
 export type Appointment = {
   id: string;

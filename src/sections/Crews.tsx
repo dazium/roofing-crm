@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import type { AppData, Crew, CrewStatus } from '../types';
+import type { AppData, Crew, CrewMember, CrewStatus } from '../types';
 import { badgeTone, uid } from '../lib';
 
 interface CrewForm {
   name: string;
   crewLead: string;
+  members: CrewMember[];
   phone: string;
   email: string;
   status: CrewStatus;
@@ -19,6 +20,7 @@ interface CrewsProps {
 const emptyCrewForm: CrewForm = {
   name: '',
   crewLead: '',
+  members: [],
   phone: '',
   email: '',
   status: 'Active',
@@ -28,6 +30,7 @@ const emptyCrewForm: CrewForm = {
 export const Crews: React.FC<CrewsProps> = ({ data, setData }) => {
   const [crewForm, setCrewForm] = useState<CrewForm>(emptyCrewForm);
   const [editingCrewId, setEditingCrewId] = useState<string | null>(null);
+  const [memberForm, setMemberForm] = useState({ name: '', role: '', phone: '', email: '', notes: '' });
 
   const selectedCrew = useMemo(
     () => data.crews.find((crew) => crew.id === editingCrewId) ?? null,
@@ -36,11 +39,44 @@ export const Crews: React.FC<CrewsProps> = ({ data, setData }) => {
 
   function resetForm() {
     setCrewForm(emptyCrewForm);
+    setMemberForm({ name: '', role: '', phone: '', email: '', notes: '' });
     setEditingCrewId(null);
+  }
+
+  function cleanMembers(members: CrewMember[]) {
+    return members
+      .map((member) => ({
+        ...member,
+        name: member.name.trim(),
+        role: member.role?.trim() || undefined,
+        phone: member.phone?.trim() || undefined,
+        email: member.email?.trim() || undefined,
+        notes: member.notes?.trim() || undefined,
+      }))
+      .filter((member) => member.name);
+  }
+
+  function addMember() {
+    if (!memberForm.name.trim()) return;
+    const newMember: CrewMember = {
+      id: uid(),
+      name: memberForm.name.trim(),
+      role: memberForm.role.trim() || undefined,
+      phone: memberForm.phone.trim() || undefined,
+      email: memberForm.email.trim() || undefined,
+      notes: memberForm.notes.trim() || undefined,
+    };
+    setCrewForm((prev) => ({ ...prev, members: [...prev.members, newMember] }));
+    setMemberForm({ name: '', role: '', phone: '', email: '', notes: '' });
+  }
+
+  function removeMember(memberId: string) {
+    setCrewForm((prev) => ({ ...prev, members: prev.members.filter((member) => member.id !== memberId) }));
   }
 
   function saveCrew() {
     if (!crewForm.name.trim()) return;
+    const members = cleanMembers(crewForm.members);
 
     if (editingCrewId) {
       setData((prev) => ({
@@ -50,6 +86,7 @@ export const Crews: React.FC<CrewsProps> = ({ data, setData }) => {
               ...crew,
               name: crewForm.name.trim(),
               crewLead: crewForm.crewLead.trim() || undefined,
+              members,
               phone: crewForm.phone.trim() || undefined,
               email: crewForm.email.trim() || undefined,
               status: crewForm.status,
@@ -66,6 +103,7 @@ export const Crews: React.FC<CrewsProps> = ({ data, setData }) => {
       id: uid(),
       name: crewForm.name.trim(),
       crewLead: crewForm.crewLead.trim() || undefined,
+      members,
       phone: crewForm.phone.trim() || undefined,
       email: crewForm.email.trim() || undefined,
       status: crewForm.status,
@@ -86,6 +124,7 @@ export const Crews: React.FC<CrewsProps> = ({ data, setData }) => {
     setCrewForm({
       name: crew.name,
       crewLead: crew.crewLead ?? '',
+      members: crew.members ?? [],
       phone: crew.phone ?? '',
       email: crew.email ?? '',
       status: crew.status,
@@ -149,6 +188,34 @@ export const Crews: React.FC<CrewsProps> = ({ data, setData }) => {
               <span>Notes</span>
               <textarea value={crewForm.notes} onChange={(event) => setCrewForm({ ...crewForm, notes: event.target.value })} placeholder="Certifications, preferred work types, constraints..." />
             </label>
+            <div className="section-block">
+              <div className="section-subhead">
+                <div>
+                  <h4>Crew members</h4>
+                  <span>{crewForm.members.length} member{crewForm.members.length === 1 ? '' : 's'} staged for this crew</span>
+                </div>
+              </div>
+              <div className="crew-member-form">
+                <input value={memberForm.name} onChange={(event) => setMemberForm({ ...memberForm, name: event.target.value })} placeholder="Member name" />
+                <input value={memberForm.role} onChange={(event) => setMemberForm({ ...memberForm, role: event.target.value })} placeholder="Role" />
+                <input value={memberForm.phone} onChange={(event) => setMemberForm({ ...memberForm, phone: event.target.value })} placeholder="Phone" />
+                <input value={memberForm.email} onChange={(event) => setMemberForm({ ...memberForm, email: event.target.value })} placeholder="Email" />
+                <input value={memberForm.notes} onChange={(event) => setMemberForm({ ...memberForm, notes: event.target.value })} placeholder="Notes" />
+                <button type="button" className="ghost" onClick={addMember}>Add member</button>
+              </div>
+              <div className="crew-member-list">
+                {crewForm.members.length ? crewForm.members.map((member) => (
+                  <div key={member.id} className="crew-member-row">
+                    <div>
+                      <strong>{member.name}</strong>
+                      <span>{[member.role, member.phone, member.email].filter(Boolean).join(' · ') || 'No details yet'}</span>
+                      {member.notes ? <small>{member.notes}</small> : null}
+                    </div>
+                    <button type="button" className="ghost danger" onClick={() => removeMember(member.id)}>Remove</button>
+                  </div>
+                )) : <div className="empty">Add members so Crew Mode and scheduling have a real roster.</div>}
+              </div>
+            </div>
             <div className="hero-actions">
               <button onClick={saveCrew}>{editingCrewId ? 'Save crew changes' : 'Add crew'}</button>
               {editingCrewId ? <button className="ghost" onClick={resetForm}>Cancel edit</button> : null}
@@ -172,9 +239,15 @@ export const Crews: React.FC<CrewsProps> = ({ data, setData }) => {
                 </div>
                 <p>{crew.crewLead ? `Lead: ${crew.crewLead}` : 'No crew lead assigned yet'}</p>
                 <small>{crew.notes || 'No crew notes yet.'}</small>
+                <div className="crew-roster-list">
+                  {(crew.members ?? []).length ? (crew.members ?? []).map((member) => (
+                    <span key={member.id}>{member.name}{member.role ? ` - ${member.role}` : ''}</span>
+                  )) : <span>No members added yet</span>}
+                </div>
                 <div className="inspection-metrics">
                   <span>{crew.phone || 'No phone'}</span>
                   <span>{crew.email || 'No email'}</span>
+                  <span>{(crew.members ?? []).length} member{(crew.members ?? []).length === 1 ? '' : 's'}</span>
                 </div>
                 <div className="hero-actions">
                   <button className="ghost" onClick={() => startEdit(crew)}>Edit</button>
