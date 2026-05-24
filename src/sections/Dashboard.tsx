@@ -41,6 +41,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onOpenInvoices,
   onOpenTasks,
 }) => {
+  const [showWorkspaceDetails, setShowWorkspaceDetails] = useState(false);
+  const [showDashboardDetails, setShowDashboardDetails] = useState(false);
   const [weather, setWeather] = useState<JobWeatherSnapshot | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState<string | null>(null);
@@ -350,7 +352,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
 
-          <div className="workspace-meta-grid">
+          <div className="hero-actions">
+            <button className="ghost" onClick={() => setShowWorkspaceDetails((prev) => !prev)}>
+              {showWorkspaceDetails ? 'Show less details' : 'Show more details'}
+            </button>
+          </div>
+
+          {showWorkspaceDetails && <div className="workspace-meta-grid">
             <div className="workspace-meta-item">
               <span>Customer</span>
               <strong>{selectedCustomer?.name ?? 'No customer selected'}</strong>
@@ -393,9 +401,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <span>Project notes</span>
               <strong>{selectedJob?.notes?.trim() || 'No project notes yet'}</strong>
             </div>
-          </div>
+          </div>}
 
-          <div className="summary-box project-summary-box">
+          {showWorkspaceDetails && <div className="summary-box project-summary-box">
             <div className="section-subhead">
               <h4>Weather outlook</h4>
               <span>{selectedJob?.scheduledFor ? `Forecast around ${selectedJob.scheduledFor}` : 'Current + next few days'}</span>
@@ -420,7 +428,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             ) : (
               <div className="empty">No weather yet.</div>
             )}
-          </div>
+          </div>}
 
           <div className="hero-actions">
             <button onClick={onOpenInspect}>Open inspection</button>
@@ -447,7 +455,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           <button onClick={nextAction.action}>{nextAction.label}</button>
 
-          <div className="linked-record-list workspace-links-list">
+          {showWorkspaceDetails && <div className="linked-record-list workspace-links-list">
             {workspaceLinks.map((item) => (
               <button key={item.title} className="linked-record-row linked-record-action" onClick={item.action}>
                 <strong>{item.title}</strong>
@@ -455,7 +463,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <small>{item.actionLabel}</small>
               </button>
             ))}
-          </div>
+          </div>}
         </div>
       </section>
 
@@ -492,7 +500,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </button>
       </section>
 
-      <section className="content-grid two-col dashboard-detail-grid">
+      <div className="hero-actions">
+        <button className="ghost" onClick={() => setShowDashboardDetails((prev) => !prev)}>
+          {showDashboardDetails ? 'Show less dashboard detail' : 'Show more dashboard detail'}
+        </button>
+      </div>
+
+      {showDashboardDetails && <section className="content-grid two-col dashboard-detail-grid">
         <div className="column-stack">
           <div className="card">
             <div className="section-head">
@@ -572,7 +586,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
         </div>
-      </section>
+      </section>}
     </>
   );
 };

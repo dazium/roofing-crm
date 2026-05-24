@@ -122,6 +122,7 @@ function storageMessageFor(driver: StorageDriver, storageMeta?: StorageMeta, mig
 
 export default function App() {
   const [view, setView] = useState<View>('dashboard');
+  const [simpleView, setSimpleView] = useState(true);
   const [data, setData] = useState<AppData>(seedData);
   const [search, setSearch] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(seedData.customers[0]?.id ?? null);
@@ -441,8 +442,12 @@ export default function App() {
     { key: 'locations', label: '9. Locations', caption: selectedCustomer?.address ?? 'Map the route' },
     { key: 'settings', label: 'Settings', caption: data.companyProfile.name.trim() || 'Set company profile' },
   ];
+  const visibleNavItems = simpleView
+    ? navItems.filter((item) => ['dashboard', 'customers', 'inspect', 'jobs', 'estimates', 'invoices', 'tasks', 'settings'].includes(item.key))
+    : navItems;
+
   return (
-    <div className="page-shell">
+    <div className={`page-shell ${simpleView ? 'simple-view' : ''}`}>
       <aside className="sidebar">
         <div className="brand-block">
           <div className="brand-mark">CRM</div>
@@ -453,7 +458,7 @@ export default function App() {
         </div>
         <div className="sidebar-section">
           <span className="sidebar-label">Workspace</span>
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <button
               key={item.key}
               className={`nav-item nav-button ${view === item.key ? 'active' : ''}`}
@@ -489,6 +494,9 @@ export default function App() {
               <p>{activeViewDetail[view]}</p>
             </div>
             <div className="header-summary">
+              <button className="ghost view-toggle" onClick={() => setSimpleView((prev) => !prev)}>
+                {simpleView ? 'Show full view' : 'Show simple view'}
+              </button>
               <div className="header-chip">
                 <span>Open jobs</span>
                 <strong>{data.jobs.filter((job) => job.status !== 'Complete' && job.status !== 'Paid').length}</strong>
@@ -504,7 +512,7 @@ export default function App() {
             </div>
           </div>
           <div className="main-nav mobile-nav">
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <button
                 key={`mobile-${item.key}`}
                 className={`main-nav-button ${view === item.key ? 'active' : ''}`}

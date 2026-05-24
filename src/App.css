@@ -290,6 +290,11 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  align-items: center;
+}
+
+.view-toggle {
+  min-width: 150px;
 }
 
 .header-chip {
@@ -328,6 +333,27 @@ button:disabled {
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 14px;
+}
+
+.simple-view .brand-block p,
+.simple-view .page-header p,
+.simple-view .section-head span,
+.simple-view .context-card small,
+.simple-view .workflow-strip,
+.simple-view .sidebar .sidebar-section:last-child,
+.simple-view .header-chip:nth-child(3),
+.simple-view .inspection-metrics,
+.simple-view .photo-meta span,
+.simple-view .stack-item small {
+  display: none;
+}
+
+.page-shell.simple-view {
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.simple-view .card {
+  padding: 11px;
 }
 
 .workflow-step {

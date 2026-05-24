@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { AppData, Estimate, EstimateLineItem, Inspection } from '../types';
 import { buildEstimateLineItemsFromDamages, buildEstimateLineItemsFromPlan, buildEstimatePdfHtml, companyDisplayName, companyTagline, money, openAddressInMaps, openEmailClient, openPhoneDialer, uid } from '../lib';
 import { RoofMathPanel } from '../components/RoofMathPanel';
@@ -42,6 +42,7 @@ export const Estimates: React.FC<EstimatesProps> = ({
   goToJobs,
   goToBilling
 }) => {
+  const [showEstimateDetails, setShowEstimateDetails] = useState(false);
   const selectedJob = data.jobs.find((j) => j.id === selectedJobId) || null;
   const selectedCustomer = data.customers.find((c) => c.id === selectedCustomerId) || null;
   const selectedEstimate = data.estimates.find((e) => e.jobId === selectedJobId) || null;
@@ -313,8 +314,13 @@ export const Estimates: React.FC<EstimatesProps> = ({
                   <strong>{money(proposalTotals.subtotal)}</strong>
                 </div>
               </div>
+              <div className="hero-actions">
+                <button className="ghost" onClick={() => setShowEstimateDetails((prev) => !prev)}>
+                  {showEstimateDetails ? 'Show less details' : 'Show more details'}
+                </button>
+              </div>
 
-              <div className="section-block">
+              {showEstimateDetails && <div className="section-block">
                 <div className="section-subhead">
                   <h4>Measurement snapshot</h4>
                   <span>These numbers describe the roof size that pricing is based on. Starter and drip edge are both derived from the same perimeter edge math (eaves + rakes).</span>
@@ -337,9 +343,9 @@ export const Estimates: React.FC<EstimatesProps> = ({
                     />
                   </label>
                 </div>
-              </div>
+              </div>}
 
-              <div className="section-block">
+              {showEstimateDetails && <div className="section-block">
                 <div className="section-subhead">
                   <h4>Pricing controls</h4>
                   <span>Line items drive the subtotal. Overhead, markup, tax, and deposit are applied on top.</span>
@@ -397,9 +403,9 @@ export const Estimates: React.FC<EstimatesProps> = ({
                     />
                   </label>
                 </div>
-              </div>
+              </div>}
 
-              <div className="section-block">
+              {showEstimateDetails && <div className="section-block">
                 <div className="section-subhead">
                   <h4>Scope and homeowner terms</h4>
                   <span>What is included, how long it takes, and what is covered.</span>
@@ -427,7 +433,7 @@ export const Estimates: React.FC<EstimatesProps> = ({
                     />
                   </label>
                 </div>
-              </div>
+              </div>}
 
               <div className="section-block">
                 <div className="section-subhead">

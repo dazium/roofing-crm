@@ -78,6 +78,8 @@ export const Invoices: React.FC<InvoicesProps> = ({
   selectedJobId,
   selectJob,
 }) => {
+  const [showInvoiceFormDetails, setShowInvoiceFormDetails] = useState(false);
+  const [showInvoiceBoardDetails, setShowInvoiceBoardDetails] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(data.invoices[0]?.id ?? null);
   const [paymentDraft, setPaymentDraft] = useState(0);
   const [billingCustomerId, setBillingCustomerId] = useState<string>(
@@ -454,7 +456,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
                 </select>
               </label>
             </div>
-            <div className="split-grid">
+            {showInvoiceFormDetails && <div className="split-grid">
               <label className="field field-short">
                 <span>Amount</span>
                 <input
@@ -473,7 +475,8 @@ export const Invoices: React.FC<InvoicesProps> = ({
                   onChange={(event) => setInvoiceForm({ ...invoiceForm, paidAmount: cleanMoney(Number(event.target.value)) })}
                 />
               </label>
-            </div>
+            </div>}
+            {showInvoiceFormDetails && <>
             <div className="split-grid">
               <label className="field field-compact">
                 <span>Due date</span>
@@ -502,6 +505,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
                 />
               </label>
             </div>
+            </>}
             <label className="field compact-textarea">
               <span>Notes</span>
               <textarea
@@ -510,7 +514,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
                 onChange={(event) => setInvoiceForm({ ...invoiceForm, notes: event.target.value })}
               />
             </label>
-            <div className="mini-stats-grid">
+            {showInvoiceFormDetails && <div className="mini-stats-grid">
               <div className="mini-stat-card">
                 <span>Billing customer</span>
                 <strong>{selectedBillingCustomer?.name ?? 'No customer selected'}</strong>
@@ -527,8 +531,8 @@ export const Invoices: React.FC<InvoicesProps> = ({
                 <span>Balance due</span>
                 <strong>{money(Math.max(0, invoiceForm.amount - invoiceForm.paidAmount))}</strong>
               </div>
-            </div>
-            {selectedBillingCustomer && (
+            </div>}
+            {showInvoiceFormDetails && selectedBillingCustomer && (
               <div className="summary-box">
                 <div className="customer-detail-grid">
                   <div className="customer-detail-row">
@@ -563,6 +567,9 @@ export const Invoices: React.FC<InvoicesProps> = ({
               </div>
             )}
             <div className="hero-actions">
+              <button className="ghost" onClick={() => setShowInvoiceFormDetails((prev) => !prev)}>
+                {showInvoiceFormDetails ? 'Show less details' : 'Show more details'}
+              </button>
               <button className="ghost" onClick={createInvoiceFromEstimate}>Pull from estimate</button>
               <button className="ghost" onClick={createDepositInvoice} disabled={!selectedEstimate}>Use deposit amount</button>
               <button onClick={createInvoice}>Save invoice</button>
@@ -598,7 +605,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
               <strong>{dueSoonInvoices.length}</strong>
             </div>
           </div>
-          {(overdueInvoices.length > 0 || dueSoonInvoices.length > 0) && (
+          {showInvoiceFormDetails && (overdueInvoices.length > 0 || dueSoonInvoices.length > 0) && (
             <div className="summary-box">
               <div className="section-subhead">
                 <h4>Reminders queue</h4>
@@ -629,6 +636,11 @@ export const Invoices: React.FC<InvoicesProps> = ({
             <h3>Invoice board</h3>
             <span>Track what still needs money in</span>
           </div>
+          <div className="hero-actions">
+            <button className="ghost" onClick={() => setShowInvoiceBoardDetails((prev) => !prev)}>
+              {showInvoiceBoardDetails ? 'Simple board' : 'Show more in board'}
+            </button>
+          </div>
           <div className="list-grid">
             {sortedInvoices.map((invoice) => {
               const job = data.jobs.find((entry) => entry.id === invoice.jobId);
@@ -649,9 +661,11 @@ export const Invoices: React.FC<InvoicesProps> = ({
                       <span>{job?.title ?? 'Unknown job'}</span>
                       <span>{money(invoice.balanceDue)} due</span>
                     </div>
-                    <small>Due {invoice.dueDate || 'Not set'} · Received {money(invoice.paidAmount)} of {money(invoice.amount)}</small>
+                    {showInvoiceBoardDetails && (
+                      <small>Due {invoice.dueDate || 'Not set'} · Received {money(invoice.paidAmount)} of {money(invoice.amount)}</small>
+                    )}
                   </div>
-                  <div className="job-board-meta">
+                  {showInvoiceBoardDetails && <div className="job-board-meta">
                     <span>
                       {customer?.address ? (
                         <button
@@ -667,7 +681,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
                       ) : 'No address'}
                     </span>
                     <strong>{selectedInvoiceId === invoice.id ? 'Selected' : 'Open'}</strong>
-                  </div>
+                  </div>}
                 </button>
               );
             })}
@@ -685,7 +699,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
               <span className={`pill pill-${badgeTone(selectedInvoice.status)}`}>{selectedInvoice.status}</span>
             </div>
             <div className="customer-profile-grid">
-              <div className="summary-box">
+              {showInvoiceBoardDetails && <div className="summary-box">
                 <div className="customer-detail-grid">
                   <div className="customer-detail-row">
                     <span>Amount</span>
@@ -712,8 +726,8 @@ export const Invoices: React.FC<InvoicesProps> = ({
                     <strong>{selectedInvoice.paidDate || 'Not paid yet'}</strong>
                   </div>
                 </div>
-              </div>
-              <div className="summary-box">
+              </div>}
+              {showInvoiceBoardDetails && <div className="summary-box">
                 <div className="customer-detail-grid">
                   <label className="field field-short">
                     <span>Record payment</span>
@@ -724,7 +738,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
                     <strong>{selectedInvoice.notes || 'No billing notes yet'}</strong>
                   </div>
                 </div>
-              </div>
+              </div>}
               <div className="summary-box">
                 <div className="section-subhead">
                   <h4>Invoice history</h4>

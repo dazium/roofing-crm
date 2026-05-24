@@ -35,6 +35,8 @@ export const Jobs: React.FC<JobsProps> = ({
   setJobSearch,
   setView
 }) => {
+  const [showJobDetails, setShowJobDetails] = useState(false);
+  const [showProjectListDetails, setShowProjectListDetails] = useState(false);
   const [jobForm, setJobForm] = useState<JobForm>({
     title: '',
     status: 'Scheduled',
@@ -252,6 +254,7 @@ export const Jobs: React.FC<JobsProps> = ({
             </div>
           </div>
           {selectedCustomer ? (
+            <>
             <div className="form-grid compact-grid">
               <label className="field">
                   <span>Job title</span>
@@ -321,6 +324,12 @@ export const Jobs: React.FC<JobsProps> = ({
                 <option value="High" />
               </datalist>
             </div>
+            <div className="hero-actions">
+              <button className="ghost" onClick={() => setShowJobDetails((prev) => !prev)}>
+                {showJobDetails ? 'Show less details' : 'Show more details'}
+              </button>
+            </div>
+            </>
           ) : (
             <div className="empty">Pick a customer first from the Customers page.</div>
           )}
@@ -372,7 +381,7 @@ export const Jobs: React.FC<JobsProps> = ({
               </div>
             </div>
 
-            <div className="project-summary-grid">
+            {showJobDetails && <div className="project-summary-grid">
               <div className="summary-box project-summary-box">
                 <div className="section-subhead">
                   <h4>Customer</h4>
@@ -506,9 +515,9 @@ export const Jobs: React.FC<JobsProps> = ({
                   {selectedJob.notes || 'No notes yet.'}
                 </div>
               </div>
-            </div>
+            </div>}
 
-            <div className="linked-records-grid">
+            {showJobDetails && <div className="linked-records-grid">
               <div className="summary-box project-summary-box">
                 <div className="section-subhead">
                   <h4>Inspection summary</h4>
@@ -552,9 +561,9 @@ export const Jobs: React.FC<JobsProps> = ({
                   ) : <div className="empty">No invoice linked yet.</div>}
                 </div>
               </div>
-            </div>
+            </div>}
 
-            {isEditingJob && (
+            {isEditingJob && showJobDetails && (
               <div className="summary-box project-summary-box">
                 <div className="section-subhead">
                 <h4>Edit project</h4>
@@ -641,6 +650,11 @@ export const Jobs: React.FC<JobsProps> = ({
               <strong>{highPriorityJobs.length}</strong>
             </div>
           </div>
+          <div className="hero-actions">
+            <button className="ghost" onClick={() => setShowProjectListDetails((prev) => !prev)}>
+              {showProjectListDetails ? 'Simple list' : 'Show more in list'}
+            </button>
+          </div>
           <div className="jobs-toolbar">
             <span>
               {selectedCustomer ? `Showing projects for ${selectedCustomer.name}` : 'Showing all projects'}
@@ -684,11 +698,11 @@ export const Jobs: React.FC<JobsProps> = ({
                       <span>{job.priority} priority</span>
                       <span>{crew?.name ?? 'No crew'}</span>
                     </div>
-                    <small>{job.notes || 'No notes yet'}</small>
-                    <div className="job-tile-meta-row">
+                    {showProjectListDetails && <small>{job.notes || 'No notes yet'}</small>}
+                    {showProjectListDetails && <div className="job-tile-meta-row">
                       <span>{estimate ? `Estimate ${money(estimate.totalPrice)}` : 'No estimate'}</span>
                       <span>{invoice ? `Invoice ${invoice.status}` : 'No invoice'}</span>
-                    </div>
+                    </div>}
                   </div>
                   <div className="job-board-meta">
                     {customer?.address ? (

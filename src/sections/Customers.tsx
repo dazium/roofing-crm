@@ -43,6 +43,8 @@ export const Customers: React.FC<CustomersProps> = ({
     source: 'Facebook'
   });
   const [isEditingCustomer, setIsEditingCustomer] = useState(false);
+  const [showCustomerDetails, setShowCustomerDetails] = useState(false);
+  const [showLeadListDetails, setShowLeadListDetails] = useState(false);
   const [customerEditForm, setCustomerEditForm] = useState<CustomerForm>({
     name: '',
     phone: '',
@@ -339,8 +341,12 @@ export const Customers: React.FC<CustomersProps> = ({
                 <strong>{customerInspections.length}</strong>
               </div>
             </div>
-
-            <div className="project-summary-grid">
+            <div className="hero-actions">
+              <button className="ghost" onClick={() => setShowCustomerDetails((prev) => !prev)}>
+                {showCustomerDetails ? 'Show less details' : 'Show more details'}
+              </button>
+            </div>
+            {showCustomerDetails && <div className="project-summary-grid">
               <div className="summary-box project-summary-box">
                 <div className="section-subhead">
                   <h4>Contact snapshot</h4>
@@ -412,7 +418,7 @@ export const Customers: React.FC<CustomersProps> = ({
                   {selectedCustomer.notes || 'No notes yet.'}
                 </div>
               </div>
-            </div>
+            </div>}
 
             {canConvertLeadToJob && (
               <div className="workflow-callout">
@@ -421,16 +427,16 @@ export const Customers: React.FC<CustomersProps> = ({
                 <button className="callout-btn" onClick={convertLeadToJob}>Create Project Now</button>
               </div>
             )}
-            <div className="workflow-callout">
+            {showCustomerDetails && <div className="workflow-callout">
               <strong>Lead workflow check</strong>
               <span>
                 {leadStatusValidation.valid
                   ? `Current status is consistent. Recommended stage: ${recommendedStatus}.`
                   : `${leadStatusValidation.message} Recommended stage: ${recommendedStatus}.`}
               </span>
-            </div>
+            </div>}
 
-            <div className="linked-records-grid">
+            {showCustomerDetails && <div className="linked-records-grid">
               <div className="summary-box project-summary-box">
                 <div className="section-subhead">
                   <h4>Jobs</h4>
@@ -466,9 +472,9 @@ export const Customers: React.FC<CustomersProps> = ({
                   )) : <div className="empty">No invoices yet.</div>}
                 </div>
               </div>
-            </div>
+            </div>}
 
-            {isEditingCustomer && (
+            {isEditingCustomer && showCustomerDetails && (
               <div className="summary-box project-summary-box">
                 <div className="section-subhead">
                   <h4>Edit customer</h4>
@@ -547,6 +553,11 @@ export const Customers: React.FC<CustomersProps> = ({
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
+          <div className="hero-actions">
+            <button className="ghost" onClick={() => setShowLeadListDetails((prev) => !prev)}>
+              {showLeadListDetails ? 'Simple list' : 'Show more in list'}
+            </button>
+          </div>
           <div className="list-grid">
             {data.customers.length === 0 && (
               <div className="empty">
@@ -583,7 +594,7 @@ export const Customers: React.FC<CustomersProps> = ({
                 >
                   {customer.address}
                 </button>
-                <div className="job-tile-meta-row">
+                    {showLeadListDetails && <div className="job-tile-meta-row">
                   {customer.phone ? (
                     <button
                       type="button"
@@ -613,7 +624,7 @@ export const Customers: React.FC<CustomersProps> = ({
                     <span>No email</span>
                   )}
                   <span>{customer.source}</span>
-                </div>
+                    </div>}
               </div>
             ))}
 
