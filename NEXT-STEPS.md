@@ -70,7 +70,7 @@ These are the highest-value checks because they confirm whether the app feels re
 ### Crew flow
 - [x] Add field-focused Crew Mode adapted from the donor mobile crew app
 - [x] Add a basic map/location view for customer addresses, job sites, and route stops
-- [ ] Verify Crew Mode on mobile-sized viewport and Android device
+- [x] Verify Crew Mode on mobile-sized viewport and Android device
 
 ## Code cleanup
 

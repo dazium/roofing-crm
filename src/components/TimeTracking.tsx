@@ -14,35 +14,29 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
   onUpdate,
 }) => {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
   const todayLog = data.timeLogs.find(
     (log) => log.crewId === selectedCrewId && log.date === today
   );
   const activeEntry = todayLog?.entries.find((entry) => !entry.punchOutTime);
+  const isRunning = Boolean(activeEntry);
 
   // Timer effect
   useEffect(() => {
     if (!isRunning || !activeEntry) {
-      setElapsedSeconds(0);
       return;
     }
 
+    const punchIn = new Date(activeEntry.punchInTime);
+
     const interval = setInterval(() => {
-      const now = new Date();
-      const punchIn = new Date(activeEntry.punchInTime);
-      const diffMs = now.getTime() - punchIn.getTime();
+      const diffMs = Date.now() - punchIn.getTime();
       setElapsedSeconds(Math.floor(diffMs / 1000));
     }, 1000);
 
     return () => clearInterval(interval);
   }, [isRunning, activeEntry]);
-
-  // Update running state based on active entry
-  useEffect(() => {
-    setIsRunning(!!activeEntry);
-  }, [activeEntry]);
 
   function formatTime(seconds: number): string {
     const hours = Math.floor(seconds / 3600);
@@ -59,13 +53,15 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
 
   function punchIn() {
     if (!selectedCrewId) return;
+    const punchInTime = new Date().toISOString();
 
     const newEntry: TimeEntry = {
       id: uid(),
       crewId: selectedCrewId,
       date: today,
-      punchInTime: new Date().toISOString(),
+      punchInTime,
     };
+    setElapsedSeconds(0);
 
     let updatedLog = todayLog;
     if (!updatedLog) {

@@ -19,12 +19,12 @@ Pull only the useful parts from the donor app, adapted to the real local-first a
 ## 8-hour execution list
 
 ### Phase 1: Truth and merge mapping
-- [ ] Create a truth-based implementation status file for RoofingCRM
-- [ ] Create a donor feature import map: keep / adapt / ignore
-- [ ] Compare donor notes against live RoofingCRM code and remove false completion assumptions
+- [x] Create a truth-based implementation status file for RoofingCRM
+- [x] Create a donor feature import map: keep / adapt / ignore
+- [x] Compare donor notes against live RoofingCRM code and remove false completion assumptions
 
 ### Phase 2: Runtime verification
-- [ ] Verify desktop workflow path: customer -> inspection -> estimate -> invoice -> task
+- [x] Verify desktop workflow path: customer -> inspection -> estimate -> invoice -> task
 - [ ] Verify data persistence after restart
 - [ ] Verify backup export/import behavior
 - [ ] Verify PDF export from real UI actions
@@ -54,3 +54,9 @@ Pull only the useful parts from the donor app, adapted to the real local-first a
 - Worklog updated
 - New checklist items reflect reality, not guesswork
 - Any imported feature is visible in code and survives persistence
+
+## Verification notes (2026-05-20)
+- Workflow route reachability was verified via Playwright (`npm run test:e2e`) covering core screens in order.
+- Lint, build, and unit tests are currently green (`npm run lint`, `npm run test`, `npm run build`).
+- Invoice PDF export implementation path is confirmed in code (`src/sections/Invoices.tsx` -> `buildInvoicePdfHtml` -> desktop export bridge or print fallback), but final sign-off remains a manual Electron click-through check.
+- Electron-specific manual checks are still pending for restart persistence, backup/import click-through, PDF export action validation, and scraper refresh behavior.
