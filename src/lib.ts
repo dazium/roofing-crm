@@ -1,4 +1,4 @@
-import type { CompanyProfile, DamageRecord, Estimate, EstimateLineItem, Inspection, InspectionPhoto, Invoice, InvoiceStatus, LeadStatus, MaterialPriceSetting, Measurements, PlaneStats, RoofPlane } from './types'
+import type { CompanyProfile, DamageCategory, DamageRecord, DamageSeverity, Estimate, EstimateLineItem, Inspection, InspectionPhoto, Invoice, InvoiceStatus, LeadStatus, MaterialCategory, MaterialPriceSetting, Measurements, PlaneStats, RoofPlane } from './types'
 
 export const STORAGE_KEY = 'roofingcrm.v8'
 
@@ -24,9 +24,53 @@ function companyFooterLine(profile: CompanyProfile) {
 
 export function uid() { return Math.random().toString(36).slice(2, 10) }
 export function money(n: number) { return new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(n || 0) }
-export function badgeTone(value: string) { if (['Won', 'Paid', 'Complete', 'In Progress'].includes(value)) return 'green'; if (['Estimate Sent', 'Inspection Scheduled', 'Partial', 'High'].includes(value)) return 'orange'; if (['Scheduled', 'Awaiting Final Review', 'Contacted', 'Sent', 'Medium'].includes(value)) return 'blue'; return 'red' }
+export function badgeTone(value: string) { if (['Won', 'Paid', 'Complete', 'In Progress', 'Cosmetic', 'Minor'].includes(value)) return 'green'; if (['Estimate Sent', 'Inspection Scheduled', 'Partial', 'High', 'Functional', 'Moderate', 'Viewed'].includes(value)) return 'orange'; if (['Scheduled', 'Awaiting Final Review', 'Contacted', 'Sent', 'Medium', 'Draft'].includes(value)) return 'blue'; return 'red' }
 export const DEFAULT_LABOUR_RATE_PER_SQ = 145
 export const LEAD_STATUS_FLOW: LeadStatus[] = ['New Lead', 'Contacted', 'Inspection Scheduled', 'Estimate Sent', 'Won', 'Lost']
+export const DAMAGE_CATEGORIES: DamageCategory[] = ['Missing Shingles', 'Flashing Damage', 'Leaks', 'Sagging', 'Rot', 'Moss/Algae', 'Hail Damage', 'Wind Damage', 'Other']
+export const DAMAGE_SEVERITIES: DamageSeverity[] = ['Cosmetic', 'Minor', 'Moderate', 'Functional', 'Severe', 'Structural']
+export const DAMAGE_LOCATION_PRESETS = ['Front slope', 'Rear slope', 'Left slope', 'Right slope', 'Ridge line', 'Valley', 'Chimney flashing', 'Vent stack', 'Skylight', 'Eaves', 'Soffit/fascia', 'Gutter edge']
+export const MATERIAL_CATEGORIES: MaterialCategory[] = ['Shingles', 'Underlayment', 'Ice & Water', 'Flashing', 'Ventilation', 'Ridge', 'Edge Metal', 'Decking', 'Repair']
+export const INVOICE_STATUSES: InvoiceStatus[] = ['Draft', 'Sent', 'Viewed', 'Partial', 'Paid', 'Overdue', 'Cancelled']
+
+export function inferMaterialCategory(idOrLabel: string): MaterialCategory {
+  const value = idOrLabel.toLowerCase()
+  if (value.includes('shingle')) return 'Shingles'
+  if (value.includes('underlayment')) return 'Underlayment'
+  if (value.includes('ice') || value.includes('water shield')) return 'Ice & Water'
+  if (value.includes('flash') || value.includes('valley')) return 'Flashing'
+  if (value.includes('vent')) return 'Ventilation'
+  if (value.includes('ridge') || value.includes('cap')) return 'Ridge'
+  if (value.includes('drip') || value.includes('starter')) return 'Edge Metal'
+  if (value.includes('plywood') || value.includes('deck')) return 'Decking'
+  return 'Repair'
+}
+
+export function suggestedMaterialIdsForDamage(category: DamageCategory) {
+  switch (category) {
+    case 'Missing Shingles':
+    case 'Hail Damage':
+    case 'Wind Damage':
+      return ['mat-shingles', 'mat-starter']
+    case 'Flashing Damage':
+    case 'Leaks':
+      return ['mat-ice-water', 'mat-drip-edge', 'mat-valley-metal']
+    case 'Sagging':
+    case 'Rot':
+      return ['mat-shingles', 'mat-underlayment']
+    case 'Moss/Algae':
+      return ['mat-shingles']
+    default:
+      return ['mat-shingles', 'mat-underlayment']
+  }
+}
+
+export function damageMaterialTotal(damage: Pick<DamageRecord, 'materials'>, materialPrices: MaterialPriceSetting[]) {
+  return damage.materials.reduce((sum, item) => {
+    const material = materialPrices.find((entry) => entry.id === item.materialId)
+    return sum + (material?.price ?? 0) * Math.max(0, Number(item.quantity) || 0)
+  }, 0)
+}
 
 export type LeadWorkflowContext = {
   hasJob: boolean
@@ -97,10 +141,12 @@ export function formatBytes(bytes: number) {
 export function normalizeInvoiceStatus(invoice: Pick<Invoice, 'amount' | 'paidAmount' | 'dueDate' | 'status'>): InvoiceStatus {
   const amount = Math.max(0, Number(invoice.amount) || 0)
   const paidAmount = Math.min(amount, Math.max(0, Number(invoice.paidAmount) || 0))
+  if (invoice.status === 'Cancelled') return 'Cancelled'
   if (amount > 0 && paidAmount >= amount) return 'Paid'
   if (paidAmount > 0) return 'Partial'
   if (invoice.status === 'Draft') return 'Draft'
   if (invoice.dueDate && invoice.dueDate < new Date().toISOString().slice(0, 10)) return 'Overdue'
+  if (invoice.status === 'Viewed') return 'Viewed'
   return 'Sent'
 }
 
@@ -192,6 +238,37 @@ export function openEmailClient(email: string) {
   const trimmed = email.trim()
   if (!trimmed) return
   openExternalUrl(buildMailtoUrl(trimmed))
+}
+export function buildInvoiceEmailDraft(args: {
+  companyProfile: CompanyProfile
+  customerName: string
+  jobTitle: string
+  invoice: Invoice
+  template: 'invoice' | 'reminder' | 'overdue'
+}) {
+  const { companyProfile, customerName, jobTitle, invoice, template } = args
+  const companyName = companyDisplayName(companyProfile)
+  const duePhrase = invoice.dueDate || 'the due date on file'
+  const balance = money(invoice.balanceDue)
+
+  if (template === 'overdue') {
+    return {
+      subject: `Overdue invoice ${invoice.invoiceNumber}`,
+      body: `Hi ${customerName},\n\nInvoice ${invoice.invoiceNumber} for ${jobTitle} is overdue with ${balance} still outstanding. Please review and send payment when available.\n\nThanks,\n${companyName}`,
+    }
+  }
+
+  if (template === 'reminder') {
+    return {
+      subject: `Payment reminder: ${invoice.invoiceNumber}`,
+      body: `Hi ${customerName},\n\nThis is a reminder that invoice ${invoice.invoiceNumber} for ${jobTitle} has ${balance} outstanding and is due on ${duePhrase}.\n\nThanks,\n${companyName}`,
+    }
+  }
+
+  return {
+    subject: `Invoice ${invoice.invoiceNumber} from ${companyName}`,
+    body: `Hi ${customerName},\n\nPlease find invoice ${invoice.invoiceNumber} for ${jobTitle}.\n\nInvoice amount: ${money(invoice.amount)}\nReceived: ${money(invoice.paidAmount)}\nBalance due: ${balance}\nDue date: ${duePhrase}\n\nThanks,\n${companyName}`,
+  }
 }
 export function defaultEstimate(jobId: string): Estimate { return { id: uid(), jobId, squareFeet: 0, squares: 0, materialCost: 0, laborCost: 0, totalPrice: 0, overheadCost: 0, profitMargin: 15, taxRate: 13, depositRequired: 25, scopeOfWork: 'Tear off existing roofing materials, inspect deck, install underlayment, shingles, flashing, and site cleanup.', warranty: '10 year workmanship warranty', timeline: '1-2 working days weather permitting', lineItems: [{ id: uid(), title: 'Shingles', quantity: 1, unit: 'lot', unitPrice: 0, total: 0 }, { id: uid(), title: 'Underlayment + accessories', quantity: 1, unit: 'lot', unitPrice: 0, total: 0 }, { id: uid(), title: 'Labour', quantity: 1, unit: 'job', unitPrice: 0, total: 0 }] } }
 
@@ -590,4 +667,29 @@ export function buildInvoicePdfHtml(args: {
     </div>
   </body>
 </html>`
+}
+
+export function hasDesktopBridge(): boolean {
+  return typeof window !== 'undefined' && typeof (window as unknown as { roofingcrmDesktop?: unknown }).roofingcrmDesktop !== 'undefined'
+}
+
+export function hasDesktopPdfBridge(): boolean {
+  return hasDesktopBridge() && Boolean((window as unknown as { roofingcrmDesktop?: { exportEstimatePdf?: unknown } }).roofingcrmDesktop?.exportEstimatePdf)
+}
+
+export function hasDesktopScraperBridge(): boolean {
+  return hasDesktopBridge() && Boolean((window as unknown as { roofingcrmDesktop?: { runMaterialScraper?: unknown } }).roofingcrmDesktop?.runMaterialScraper)
+}
+export type PhotoValidationResult = { ok: true } | { ok: false; message: string }
+
+export function validateInspectionPhotoFile(file: File, options?: { maxBytes?: number; allowedTypes?: string[] }): PhotoValidationResult {
+  const maxBytes = options?.maxBytes ?? 25 * 1024 * 1024
+  const allowedTypes = options?.allowedTypes ?? ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+  if (file.size > maxBytes) {
+    return { ok: false, message: `Photo ${file.name} is ${(file.size / 1024 / 1024).toFixed(1)} MB which is over the ${(maxBytes / 1024 / 1024).toFixed(0)} MB limit.` }
+  }
+  if (file.type && !allowedTypes.includes(file.type)) {
+    return { ok: false, message: `Photo ${file.name} is type ${file.type || 'unknown'}, which is not supported. Use JPEG, PNG, WEBP, or HEIC.` }
+  }
+  return { ok: true }
 }

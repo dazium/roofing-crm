@@ -49,23 +49,35 @@ Secondary source: `rooftop-renovators-crm`
    - new main view route/nav for `Damages`
    - `AppData` import/seed/normalization updated for `damages`
 
-## Still pending from secondary app
+## Parity pass completed on 2026-05-27
 
 1. Damages domain parity:
-   - damage categories/severity/location list UX
-   - damage-to-material links
+   - expanded damage categories/severity constants
+   - location preset UX via datalist
+   - suggested material allocation by damage category
+   - project allocation summary
 
 2. Photo subsystem parity:
-   - project/customer photo management patterns
-   - explicit damage-photo linking
+   - existing customer/project gallery retained
+   - explicit photo-to-damage linking controls added in Photos
+   - stale damage links still clear when photos are removed
 
 3. Materials parity:
-   - material catalog normalization against secondary taxonomy
-   - material allocation by damage/project
+   - material catalog category taxonomy added
+   - imported/legacy material prices normalized with inferred categories
+   - material allocation visible by damage/project
 
 4. Mapping/routing parity:
-   - map view and route optimization workflows
+   - map/location view exists
+   - route queue now supports active-first, schedule, and crew ordering workflows
 
 5. Invoicing parity extensions:
-   - email delivery workflow and templates from secondary app
-   - advanced invoice statuses/workflows if desired
+   - invoice email, reminder, and overdue mailto templates added
+   - `Viewed` and `Cancelled` invoice statuses added
+   - email preparation is logged to invoice history
+
+## Still pending from secondary app
+
+1. Manual Electron verification of PDF export, email-client handoff, scraper refresh, restart persistence, and backup/import behavior.
+2. Android/device verification of camera/gallery and mobile route workflows.
+3. Any future backend/server convergence remains intentionally deferred; RoofingCRM stays local-first.

@@ -41,6 +41,10 @@ export const Locations: React.FC<LocationsProps> = ({
   setView,
 }) => {
   const [query, setQuery] = useState('');
+  const [routeMode, setRouteMode] = useState<'active' | 'schedule' | 'crew'>('active');
+  const [routeDateFilter, setRouteDateFilter] = useState('');
+  const [routeStartAddress, setRouteStartAddress] = useState('');
+  const [routePlanIds, setRoutePlanIds] = useState<string[] | null>(null);
 
   const locationRows = useMemo<LocationRow[]>(() => {
     const rows = data.customers
@@ -82,13 +86,62 @@ export const Locations: React.FC<LocationsProps> = ({
   }, [locationRows, query]);
 
   const selectedRow = filteredRows.find((row) => row.jobId === selectedJobId) ?? filteredRows.find((row) => row.customerId === selectedCustomerId) ?? filteredRows[0] ?? null;
-  const routeRows = filteredRows.filter((row) => ['Scheduled', 'In Progress', 'Inspection Scheduled'].includes(row.status)).slice(0, 8);
-  const routeUrl = buildGoogleMapsDirectionsUrl(routeRows.map((row) => row.address));
+  const suggestedRouteRows = [...filteredRows.filter((row) => ['Scheduled', 'In Progress', 'Inspection Scheduled'].includes(row.status))]
+    .filter((row) => !routeDateFilter || (row.scheduledFor ?? row.appointmentStart ?? '').startsWith(routeDateFilter))
+    .sort((a, b) => {
+      if (routeMode === 'schedule') {
+        return (a.scheduledFor ?? a.appointmentStart ?? '').localeCompare(b.scheduledFor ?? b.appointmentStart ?? '') || a.name.localeCompare(b.name);
+      }
+      if (routeMode === 'crew') {
+        return (a.crewName ?? 'zz').localeCompare(b.crewName ?? 'zz') || (a.scheduledFor ?? '').localeCompare(b.scheduledFor ?? '');
+      }
+      const statusScore = (row: LocationRow) => row.status === 'In Progress' ? 0 : row.status === 'Scheduled' ? 1 : 2;
+      return statusScore(a) - statusScore(b) || (a.priority === 'High' ? -1 : 0) || (a.scheduledFor ?? '').localeCompare(b.scheduledFor ?? '');
+    })
+    .slice(0, 8);
+  const routePlanSourceIds = routePlanIds ?? suggestedRouteRows.map((row) => row.id);
+  const routePlanRows = routePlanSourceIds
+    .map((id) => locationRows.find((row) => row.id === id))
+    .filter((row): row is LocationRow => Boolean(row));
+  const routeAddresses = [...(routeStartAddress.trim() ? [routeStartAddress.trim()] : []), ...routePlanRows.map((row) => row.address)];
+  const routeUrl = buildGoogleMapsDirectionsUrl(routeAddresses);
   const selectedMapUrl = selectedRow ? buildGoogleMapsEmbedUrl(selectedRow.address) : '';
 
   function openRoute() {
     if (!routeUrl) return;
     openExternalUrl(routeUrl);
+  }
+
+  function addRouteStop(row: LocationRow) {
+    setRoutePlanIds((prev) => {
+      const current = prev ?? routePlanRows.map((entry) => entry.id);
+      return current.includes(row.id) ? current : [...current, row.id];
+    });
+  }
+
+  function removeRouteStop(rowId: string) {
+    setRoutePlanIds((prev) => (prev ?? routePlanRows.map((entry) => entry.id)).filter((id) => id !== rowId));
+  }
+
+  function moveRouteStop(rowId: string, direction: -1 | 1) {
+    setRoutePlanIds((prev) => {
+      const current = prev ?? routePlanRows.map((entry) => entry.id);
+      const index = current.indexOf(rowId);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return current;
+      const next = [...current];
+      const [item] = next.splice(index, 1);
+      next.splice(nextIndex, 0, item);
+      return next;
+    });
+  }
+
+  function loadSuggestedRoute() {
+    setRoutePlanIds(suggestedRouteRows.map((row) => row.id));
+  }
+
+  function clearRoutePlan() {
+    setRoutePlanIds([]);
   }
 
   function selectLocation(row: LocationRow) {
@@ -128,16 +181,58 @@ export const Locations: React.FC<LocationsProps> = ({
 
         <div className="card">
           <div className="section-head">
-            <h3>Route queue</h3>
-            <span>{routeRows.length} active stop{routeRows.length === 1 ? '' : 's'}</span>
+            <h3>Route planner</h3>
+            <span>{routePlanRows.length} stop{routePlanRows.length === 1 ? '' : 's'} selected</span>
+          </div>
+          <div className="route-planner-controls">
+            <label className="field">
+              <span>Start address</span>
+              <input
+                placeholder="Shop, home base, or first departure point"
+                value={routeStartAddress}
+                onChange={(event) => setRouteStartAddress(event.target.value)}
+              />
+            </label>
+            <label className="field field-short">
+              <span>Route date</span>
+              <input type="date" value={routeDateFilter} onChange={(event) => setRouteDateFilter(event.target.value)} />
+            </label>
+          </div>
+          <div className="hero-actions">
+            <button className={routeMode === 'active' ? '' : 'ghost'} onClick={() => setRouteMode('active')}>Active first</button>
+            <button className={routeMode === 'schedule' ? '' : 'ghost'} onClick={() => setRouteMode('schedule')}>By schedule</button>
+            <button className={routeMode === 'crew' ? '' : 'ghost'} onClick={() => setRouteMode('crew')}>By crew</button>
+            <button className="ghost" onClick={loadSuggestedRoute}>Load suggested</button>
+            <button className="ghost" onClick={clearRoutePlan}>Clear</button>
+          </div>
+          <div className="route-summary-strip">
+            <div>
+              <span>Total stops</span>
+              <strong>{routePlanRows.length}</strong>
+            </div>
+            <div>
+              <span>Crews</span>
+              <strong>{new Set(routePlanRows.map((row) => row.crewName).filter(Boolean)).size}</strong>
+            </div>
+            <div>
+              <span>High priority</span>
+              <strong>{routePlanRows.filter((row) => row.priority === 'High').length}</strong>
+            </div>
           </div>
           <div className="route-stop-list">
-            {routeRows.length ? routeRows.map((row, index) => (
-              <button key={`route-${row.id}`} className="route-stop-row" onClick={() => selectLocation(row)}>
-                <strong>{index + 1}</strong>
-                <span>{row.name}</span>
-                <small>{row.address}</small>
-              </button>
+            {routePlanRows.length ? routePlanRows.map((row, index) => (
+              <div key={`route-${row.id}`} className="route-stop-row route-plan-row">
+                <button type="button" className="route-stop-main" onClick={() => selectLocation(row)}>
+                  <strong>{index + 1}</strong>
+                  <span>{row.name}</span>
+                  <small>{row.appointmentTitle ? `${row.appointmentTitle} · ${row.address}` : row.address}</small>
+                </button>
+                <div className="route-stop-actions">
+                  <button className="ghost" onClick={() => moveRouteStop(row.id, -1)} disabled={index === 0}>Up</button>
+                  <button className="ghost" onClick={() => moveRouteStop(row.id, 1)} disabled={index === routePlanRows.length - 1}>Down</button>
+                  <button className="ghost danger" onClick={() => removeRouteStop(row.id)}>Remove</button>
+                </div>
+              </div>
             )) : <div className="empty">No scheduled or active stops in the current filter.</div>}
           </div>
         </div>
@@ -156,7 +251,7 @@ export const Locations: React.FC<LocationsProps> = ({
             </div>
             <div className="mini-stat-card">
               <span>Active stops</span>
-              <strong>{routeRows.length}</strong>
+              <strong>{routePlanRows.length}</strong>
             </div>
             <div className="mini-stat-card">
               <span>Crews assigned</span>
@@ -213,6 +308,16 @@ export const Locations: React.FC<LocationsProps> = ({
                     }}
                   >
                     Open record
+                  </button>
+                  <button
+                    type="button"
+                    className="address-link"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      addRouteStop(row);
+                    }}
+                  >
+                    Add stop
                   </button>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { AppData, Estimate, EstimateLineItem, Inspection } from '../types';
-import { buildEstimateLineItemsFromDamages, buildEstimateLineItemsFromPlan, buildEstimatePdfHtml, companyDisplayName, companyTagline, money, openAddressInMaps, openEmailClient, openPhoneDialer, uid } from '../lib';
+import { buildEstimateLineItemsFromDamages, buildEstimateLineItemsFromPlan, buildEstimatePdfHtml, companyDisplayName, companyTagline, hasDesktopPdfBridge, money, openAddressInMaps, openEmailClient, openPhoneDialer, uid } from '../lib';
+import { snapshotEstimateVersion } from '../appDataActions';
 import { RoofMathPanel } from '../components/RoofMathPanel';
 
 interface EstimatesProps {
@@ -29,6 +30,22 @@ function cleanPercentInput(value: number) {
   return Number.isFinite(value) ? clamp(value, 0, 100) : 0;
 }
 
+function isLabourLineItem(item: EstimateLineItem) {
+  return ['labour', 'labor'].includes(item.title.trim().toLowerCase());
+}
+
+function estimateCostSplit(lineItems: EstimateLineItem[]) {
+  return lineItems.reduce(
+    (totals, item) => {
+      const total = cleanMoneyInput(Number(item.total || 0));
+      if (isLabourLineItem(item)) totals.laborCost += total;
+      else totals.materialCost += total;
+      return totals;
+    },
+    { materialCost: 0, laborCost: 0 }
+  );
+}
+
 export const Estimates: React.FC<EstimatesProps> = ({
   data,
   setData,
@@ -53,6 +70,7 @@ export const Estimates: React.FC<EstimatesProps> = ({
     return false;
   });
   const selectedDamageMaterialCount = selectedDamageRecords.reduce((sum, damage) => sum + damage.materials.length, 0);
+  const estimateVersions = useMemo(() => data.estimateVersions.filter((version) => version.jobId === selectedJobId).sort((a, b) => b.createdAt.localeCompare(a.createdAt)), [data.estimateVersions, selectedJobId]);
 
   const proposalTotals = useMemo(() => {
     const lineItemsSubtotal = estimateForm.lineItems.reduce((sum, item) => sum + cleanMoneyInput(Number(item.total || 0)), 0);
@@ -79,7 +97,9 @@ export const Estimates: React.FC<EstimatesProps> = ({
 
     setEstimateForm((prev) => ({
       ...prev,
-      [field]: cleaned
+      [field]: cleaned,
+      ...(field === 'squareFeet' ? { squares: Number((cleaned / 100).toFixed(2)) } : {}),
+      ...(field === 'squares' ? { squareFeet: Math.round(cleaned * 100) } : {})
     }));
   }
 
@@ -94,12 +114,7 @@ export const Estimates: React.FC<EstimatesProps> = ({
         return next;
       });
 
-      const materialCost = lineItems
-        .filter((item) => item.title.trim().toLowerCase() !== 'labour')
-        .reduce((sum, item) => sum + cleanMoneyInput(Number(item.total || 0)), 0);
-      const laborCost = lineItems
-        .filter((item) => item.title.trim().toLowerCase() === 'labour')
-        .reduce((sum, item) => sum + cleanMoneyInput(Number(item.total || 0)), 0);
+      const { materialCost, laborCost } = estimateCostSplit(lineItems);
 
       return {
         ...prev,
@@ -120,12 +135,7 @@ export const Estimates: React.FC<EstimatesProps> = ({
   function removeLineItem(id: string) {
     setEstimateForm((prev) => {
       const lineItems = prev.lineItems.filter((item) => item.id !== id);
-      const materialCost = lineItems
-        .filter((item) => item.title.trim().toLowerCase() !== 'labour')
-        .reduce((sum, item) => sum + cleanMoneyInput(Number(item.total || 0)), 0);
-      const laborCost = lineItems
-        .filter((item) => item.title.trim().toLowerCase() === 'labour')
-        .reduce((sum, item) => sum + cleanMoneyInput(Number(item.total || 0)), 0);
+      const { materialCost, laborCost } = estimateCostSplit(lineItems);
 
       return {
         ...prev,
@@ -159,7 +169,7 @@ export const Estimates: React.FC<EstimatesProps> = ({
     const { lineItems, materialCost } = buildEstimateLineItemsFromDamages(selectedDamageRecords, data.materialPrices, uid);
     if (!lineItems.length) return;
 
-    const labourItems = estimateForm.lineItems.filter((item) => item.title.trim().toLowerCase() === 'labour');
+    const labourItems = estimateForm.lineItems.filter(isLabourLineItem);
     const laborCost = labourItems.reduce((sum, item) => sum + cleanMoneyInput(Number(item.total || 0)), 0);
 
     setEstimateForm((prev) => ({
@@ -182,7 +192,13 @@ export const Estimates: React.FC<EstimatesProps> = ({
       id: selectedEstimate?.id || estimateForm.id || uid(),
       jobId: selectedJobId
     };
-    const nextData = { ...data, estimates: [...data.estimates.filter((estimate) => estimate.jobId !== selectedJobId), record] };
+    const snapshot = snapshotEstimateVersion({ jobId: selectedJobId, estimate: record, uidFactory: uid, notes: undefined });
+    const existingVersions = data.estimateVersions.filter((version) => version.jobId !== selectedJobId || version.id !== record.id);
+    const nextData = {
+      ...data,
+      estimates: [...data.estimates.filter((estimate) => estimate.jobId !== selectedJobId), record],
+      estimateVersions: [...existingVersions, ...snapshot.estimateVersions],
+    };
     setData(nextData);
     selectJob(selectedJobId, nextData);
   }
@@ -294,6 +310,7 @@ export const Estimates: React.FC<EstimatesProps> = ({
                   <button className="ghost" onClick={syncEstimateFromDamages}>Build from damages</button>
                   <button className="ghost" onClick={exportEstimatePdf}>Export PDF</button>
                 </div>
+                {!hasDesktopPdfBridge() && <div className="status-note warning">PDF export will use the browser print dialog because the desktop export bridge is not detected.</div>}
               </div>
               <div className="workflow-callout">
                 <strong>Step 3: price the job clearly.</strong>
@@ -451,31 +468,44 @@ export const Estimates: React.FC<EstimatesProps> = ({
                   </div>
                   {estimateForm.lineItems.map((item) => (
                     <div key={item.id} className="proposal-row">
-                      <input
-                        placeholder="Item"
-                        value={item.title}
-                        onChange={(e) => updateLineItem(item.id, 'title', e.target.value)}
-                      />
-                      <input
-                        type="number"
-                        min={0}
-                        placeholder="Qty"
-                        value={item.quantity}
-                        onChange={(e) => updateLineItem(item.id, 'quantity', Number(e.target.value))}
-                      />
-                      <input
-                        placeholder="Unit"
-                        value={item.unit}
-                        onChange={(e) => updateLineItem(item.id, 'unit', e.target.value)}
-                      />
-                      <input
-                        type="number"
-                        min={0}
-                        placeholder="Unit price"
-                        value={item.unitPrice}
-                        onChange={(e) => updateLineItem(item.id, 'unitPrice', Number(e.target.value))}
-                      />
+                      <label className="line-item-field">
+                        <span className="line-item-label">Item</span>
+                        <input
+                          placeholder="Item"
+                          value={item.title}
+                          onChange={(e) => updateLineItem(item.id, 'title', e.target.value)}
+                        />
+                      </label>
+                      <label className="line-item-field">
+                        <span className="line-item-label">Qty</span>
+                        <input
+                          type="number"
+                          min={0}
+                          placeholder="Qty"
+                          value={item.quantity}
+                          onChange={(e) => updateLineItem(item.id, 'quantity', Number(e.target.value))}
+                        />
+                      </label>
+                      <label className="line-item-field">
+                        <span className="line-item-label">Unit</span>
+                        <input
+                          placeholder="Unit"
+                          value={item.unit}
+                          onChange={(e) => updateLineItem(item.id, 'unit', e.target.value)}
+                        />
+                      </label>
+                      <label className="line-item-field">
+                        <span className="line-item-label">Unit price</span>
+                        <input
+                          type="number"
+                          min={0}
+                          placeholder="Unit price"
+                          value={item.unitPrice}
+                          onChange={(e) => updateLineItem(item.id, 'unitPrice', Number(e.target.value))}
+                        />
+                      </label>
                       <div className="proposal-total-cell">
+                        <span className="line-item-label">Total</span>
                         {money(item.total)}
                       </div>
                       <button className="ghost row-action-button" onClick={() => removeLineItem(item.id)}>Remove</button>
@@ -609,6 +639,21 @@ export const Estimates: React.FC<EstimatesProps> = ({
                 <button className="ghost" onClick={goToJobs}>Go to job</button>
                 <button className="ghost" onClick={goToBilling}>Go to billing</button>
               </div>
+            <div className="proposal-preview-box">
+              <h4>Saved versions</h4>
+              {estimateVersions.length ? (
+                <ul className="version-list">
+                  {estimateVersions.map((version) => (
+                    <li key={version.id}>
+                      <strong>{version.label}</strong>
+                      <span>{new Date(version.createdAt).toLocaleString()} - {money(version.totalPrice)} - {version.lineItems.length} items</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>Save this proposal to start a version history for this job.</p>
+              )}
+            </div>
             </div>
           ) : (
             <div className="empty">Select a lead and job to preview a proposal.</div>

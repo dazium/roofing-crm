@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { AppData, View } from '../types';
 import { money, openAddressInMaps, openEmailClient, openPhoneDialer } from '../lib';
+import { buildDashboardActivity, type DashboardActivityItem } from '../appLookups';
 import { fetchJobWeather, type JobWeatherSnapshot } from '../weather';
 
 interface DashboardProps {
@@ -17,16 +18,6 @@ interface DashboardProps {
   onOpenTasks: () => void;
 }
 
-type ActivityItem = {
-  id: string;
-  title: string;
-  detail: string;
-  meta: string;
-  type: 'customer' | 'job' | 'inspection' | 'estimate' | 'invoice';
-  when: string;
-  customerId?: string;
-  jobId?: string;
-};
 
 export const Dashboard: React.FC<DashboardProps> = ({
   data,
@@ -118,10 +109,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const activeProjects = data.jobs.filter((job) => ['Scheduled', 'In Progress', 'Awaiting Final Review'].includes(job.status)).length;
     const needsEstimate = data.customers.filter((customer) => ['Contacted', 'Inspection Scheduled'].includes(customer.leadStatus)).length;
     const outstanding = data.invoices.filter((invoice) => invoice.status !== 'Paid').reduce((sum, invoice) => sum + invoice.balanceDue, 0);
+    const overdueCount = data.invoices.filter((invoice) => invoice.status === 'Overdue').length;
+    const overdueAmount = data.invoices.filter((invoice) => invoice.status === 'Overdue').reduce((sum, invoice) => sum + invoice.balanceDue, 0);
     const openTasks = data.tasks.filter((task) => task.status !== 'Done').length;
     const openDamages = data.damages.length;
 
-    return { openCustomers, activeProjects, needsEstimate, outstanding, openTasks, openDamages };
+    return { openCustomers, activeProjects, needsEstimate, outstanding, openTasks, openDamages, overdueCount, overdueAmount };
   }, [data]);
 
   const priorityJobs = useMemo(
@@ -139,79 +132,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     [data.customers]
   );
 
-  const recentActivity = useMemo<ActivityItem[]>(() => {
-    const customerEvents = data.customers.map((customer) => ({
-      id: `customer-${customer.id}`,
-      title: `Lead: ${customer.name}`,
-      detail: customer.address,
-      meta: `${customer.leadStatus} · ${customer.source}`,
-      type: 'customer' as const,
-      when: customer.id,
-      customerId: customer.id,
-    }));
-
-    const jobEvents = data.jobs.map((job) => {
-      const customer = data.customers.find((entry) => entry.id === job.customerId);
-      return {
-        id: `job-${job.id}`,
-        title: `Project: ${job.title}`,
-        detail: `${customer?.name ?? 'Unknown customer'} · ${job.status}`,
-        meta: `${job.scheduledFor || 'No date set'} · ${job.priority} priority`,
-        type: 'job' as const,
-        when: job.createdAt,
-        jobId: job.id,
-      };
-    });
-
-    const inspectionEvents = data.inspections.map((inspection) => {
-      const customer = data.customers.find((entry) => entry.id === inspection.customerId);
-      const job = data.jobs.find((entry) => entry.customerId === inspection.customerId);
-      return {
-        id: `inspection-${inspection.id}`,
-        title: 'Inspection saved',
-        detail: `${customer?.name ?? 'Unknown customer'} · ${inspection.damageType}`,
-        meta: `${inspection.urgency} urgency · ${inspection.measurements.squares} squares`,
-        type: 'inspection' as const,
-        when: inspection.createdAt,
-        customerId: inspection.customerId,
-        jobId: job?.id,
-      };
-    });
-
-    const estimateEvents = data.estimates.map((estimate) => {
-      const job = data.jobs.find((entry) => entry.id === estimate.jobId);
-      const customer = data.customers.find((entry) => entry.id === job?.customerId);
-      return {
-        id: `estimate-${estimate.id}`,
-        title: 'Estimate ready',
-        detail: `${customer?.name ?? 'Unknown customer'} · ${job?.title ?? 'Unknown project'}`,
-        meta: `${money(estimate.totalPrice)} · ${estimate.lineItems.length} line items`,
-        type: 'estimate' as const,
-        when: estimate.id,
-        customerId: customer?.id,
-        jobId: estimate.jobId,
-      };
-    });
-
-    const invoiceEvents = data.invoices.map((invoice) => {
-      const job = data.jobs.find((entry) => entry.id === invoice.jobId);
-      const customer = data.customers.find((entry) => entry.id === job?.customerId);
-      return {
-        id: `invoice-${invoice.id}`,
-        title: `Invoice ${invoice.invoiceNumber}`,
-        detail: `${customer?.name ?? 'Unknown customer'} · ${invoice.status}`,
-        meta: `${money(invoice.balanceDue)} balance · due ${invoice.dueDate || 'not set'}`,
-        type: 'invoice' as const,
-        when: invoice.issuedDate ?? invoice.id,
-        customerId: customer?.id,
-        jobId: invoice.jobId,
-      };
-    });
-
-    return [...jobEvents, ...inspectionEvents, ...invoiceEvents, ...estimateEvents, ...customerEvents]
-      .sort((a, b) => b.when.localeCompare(a.when))
-      .slice(0, 8);
-  }, [data]);
+  const recentActivity = useMemo<DashboardActivityItem[]>(() => buildDashboardActivity(data, 8), [data]);
 
   const nextAction = useMemo(() => {
     if (!selectedCustomer) {
@@ -318,7 +239,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     },
   ];
 
-  function openActivity(item: ActivityItem) {
+  function openActivity(item: DashboardActivityItem) {
     if (item.jobId) {
       onOpenJob(item.jobId);
       return;

@@ -10,6 +10,8 @@
     "dev": "vite",
     "dev:desktop": "vite --host 127.0.0.1 --port 4173 --strictPort",
     "build": "tsc -b && vite build",
+    "android:sync": "cap sync android",
+    "verify": "npm run lint && npm run test && npm run build && npm run android:sync",
     "clean:release": "node -e \"require('fs').rmSync('release',{recursive:true,force:true})\"",
     "android:debug": "scripts\\android-debug.cmd",
     "android:release": "scripts\\android-release.cmd",

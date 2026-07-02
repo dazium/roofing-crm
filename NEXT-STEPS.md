@@ -62,6 +62,9 @@ These are the highest-value checks because they confirm whether the app feels re
 - [x] Decide whether invoices need PDF export too
 - [x] Consider editable invoice history instead of simple status updates
 - [x] Add stronger overdue handling and reminders if the app grows up
+- [x] Add local email template handoff for invoice delivery, reminders, and overdue follow-up
+- [x] Add invoice detail delivery/export panel with recipient editing, draft preview, copy/open email, invoice preview, and PDF export actions
+- [x] Add advanced invoice statuses (`Viewed`, `Cancelled`)
 
 ### Task flow
 - [x] Decide whether tasks need editing, not just creation/status/checklist toggles
@@ -70,6 +73,8 @@ These are the highest-value checks because they confirm whether the app feels re
 ### Crew flow
 - [x] Add field-focused Crew Mode adapted from the donor mobile crew app
 - [x] Add a basic map/location view for customer addresses, job sites, and route stops
+- [x] Add route queue ordering modes for active work, schedule order, and crew grouping
+- [x] Add donor-style local route planner with start address, route date filter, suggested stops, manual add/remove/reorder, and Google Maps handoff
 - [x] Verify Crew Mode on mobile-sized viewport and Android device
 
 ## Code cleanup
@@ -78,6 +83,7 @@ These are the highest-value checks because they confirm whether the app feels re
 - [ ] Break down large top-level app state responsibilities in `App.tsx`
 - [ ] Reduce repeated selection/state orchestration where possible
 - [ ] Decide whether data actions should move into hooks or service modules
+- [x] Extract reusable selection/photo data transitions from `App.tsx` into a service-style helper module
 
 ### Utilities and duplication
 - [x] Remove repeated local `uid()` helpers and use a shared one consistently
@@ -95,6 +101,11 @@ These are the highest-value checks because they confirm whether the app feels re
   - [x] roof math calculations
   - [x] estimate line-item generation
   - [x] storage normalization
+  - [x] damage material allocation
+  - [x] photo-to-damage link cleanup
+  - [x] invoice email/status extensions
+  - [x] material taxonomy normalization
+  - [x] app selection resolution
 
 ## Product decisions still open
 - [x] Should RoofingCRM stay local-first and single-user, or grow a backend?

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { AppData, PhotoCategory } from '../types';
 import { badgeTone, formatBytes } from '../lib';
 
@@ -8,6 +8,7 @@ interface PhotosProps {
   selectCustomer: (customerId: string | null, nextData?: AppData) => void;
   selectedJobId: string | null;
   selectJob: (jobId: string | null, nextData?: AppData) => void;
+  setData: React.Dispatch<React.SetStateAction<AppData>>;
   photoCategory: PhotoCategory;
   setPhotoCategory: React.Dispatch<React.SetStateAction<PhotoCategory>>;
   photoLabel: string;
@@ -25,6 +26,7 @@ export const Photos: React.FC<PhotosProps> = ({
   selectCustomer,
   selectedJobId,
   selectJob,
+  setData,
   photoCategory,
   setPhotoCategory,
   photoLabel,
@@ -35,10 +37,17 @@ export const Photos: React.FC<PhotosProps> = ({
   cameraInputRef,
   setView,
 }) => {
+  const [linkPhotoId, setLinkPhotoId] = useState('');
+  const [linkDamageId, setLinkDamageId] = useState('');
   const selectedCustomer = data.customers.find((customer) => customer.id === selectedCustomerId) ?? null;
   const selectedInspection = data.inspections.find((inspection) => inspection.customerId === selectedCustomerId) ?? null;
   const selectedPhotos = selectedInspection?.photos ?? [];
   const totalPhotoBytes = selectedPhotos.reduce((sum, photo) => sum + (photo.sizeBytes ?? 0), 0);
+  const projectDamages = data.damages.filter((damage) => {
+    if (selectedJobId) return damage.jobId === selectedJobId;
+    if (selectedCustomerId) return damage.customerId === selectedCustomerId;
+    return false;
+  });
 
   const linkedDamageByPhoto = useMemo(() => {
     const lookup = new Map<string, string[]>();
@@ -54,6 +63,39 @@ export const Photos: React.FC<PhotosProps> = ({
     acc[photo.category] += 1;
     return acc;
   }, { Before: 0, Damage: 0, Progress: 0, After: 0 });
+
+  const selectedLinkDamage = data.damages.find((damage) => damage.id === linkDamageId) ?? null;
+  const linkAlreadyExists = Boolean(selectedLinkDamage && linkPhotoId && selectedLinkDamage.linkedPhotoIds.includes(linkPhotoId));
+
+  function applyPhotoDamageLink() {
+    if (!linkPhotoId || !linkDamageId) return;
+    setData((prev) => ({
+      ...prev,
+      damages: prev.damages.map((damage) => damage.id === linkDamageId
+        ? {
+            ...damage,
+            linkedPhotoIds: damage.linkedPhotoIds.includes(linkPhotoId)
+              ? damage.linkedPhotoIds
+              : [...damage.linkedPhotoIds, linkPhotoId],
+            updatedAt: new Date().toISOString(),
+          }
+        : damage),
+    }));
+  }
+
+  function removePhotoDamageLink() {
+    if (!linkPhotoId || !linkDamageId) return;
+    setData((prev) => ({
+      ...prev,
+      damages: prev.damages.map((damage) => damage.id === linkDamageId
+        ? {
+            ...damage,
+            linkedPhotoIds: damage.linkedPhotoIds.filter((photoId) => photoId !== linkPhotoId),
+            updatedAt: new Date().toISOString(),
+          }
+        : damage),
+    }));
+  }
 
   return (
     <section className="content-grid two-col">
@@ -151,6 +193,46 @@ export const Photos: React.FC<PhotosProps> = ({
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="card">
+          <div className="section-head">
+            <h3>Damage links</h3>
+            <span>Explicit photo-to-damage attachment</span>
+          </div>
+          {selectedPhotos.length && projectDamages.length ? (
+            <div className="form-grid compact-grid">
+              <div className="split-grid">
+                <label className="field">
+                  <span>Photo</span>
+                  <select value={linkPhotoId} onChange={(event) => setLinkPhotoId(event.target.value)}>
+                    <option value="">Choose photo</option>
+                    {selectedPhotos.map((photo) => (
+                      <option key={photo.id} value={photo.id}>{photo.label} ({photo.category})</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="field">
+                  <span>Damage</span>
+                  <select value={linkDamageId} onChange={(event) => setLinkDamageId(event.target.value)}>
+                    <option value="">Choose damage</option>
+                    {projectDamages.map((damage) => (
+                      <option key={damage.id} value={damage.id}>{damage.category} - {damage.location || damage.severity}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="status-note">
+                {linkAlreadyExists ? 'This photo is already linked to the selected damage.' : 'Select a photo and damage record to create a documentation link.'}
+              </div>
+              <div className="hero-actions">
+                <button onClick={applyPhotoDamageLink} disabled={!linkPhotoId || !linkDamageId || linkAlreadyExists}>Link photo</button>
+                <button className="ghost danger" onClick={removePhotoDamageLink} disabled={!linkPhotoId || !linkDamageId || !linkAlreadyExists}>Remove link</button>
+              </div>
+            </div>
+          ) : (
+            <div className="empty">Add photos and damage records for this customer or project before linking.</div>
+          )}
         </div>
       </div>
 

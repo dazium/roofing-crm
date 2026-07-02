@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { AppData, DamageCategory, DamageMaterialItem, DamageRecord, DamageSeverity } from '../types';
-import { badgeTone, money, uid } from '../lib';
+import { DAMAGE_CATEGORIES, DAMAGE_LOCATION_PRESETS, DAMAGE_SEVERITIES, badgeTone, damageMaterialTotal, money, suggestedMaterialIdsForDamage, uid } from '../lib';
 
 interface DamageForm {
   category: DamageCategory;
@@ -45,6 +45,8 @@ export const Damages: React.FC<DamagesProps> = ({
   const selectedInspection = data.inspections.find((inspection) => inspection.customerId === selectedCustomerId) ?? null;
 
   const availablePhotos = selectedInspection?.photos ?? [];
+  const selectedJobDamages = data.damages.filter((damage) => damage.jobId === selectedJobId);
+  const selectedJobMaterialTotal = selectedJobDamages.reduce((sum, damage) => sum + damageMaterialTotal(damage, data.materialPrices), 0);
   const filteredDamages = useMemo(() => {
     return data.damages.filter((damage) => {
       if (selectedJobId) return damage.jobId === selectedJobId;
@@ -78,6 +80,20 @@ export const Damages: React.FC<DamagesProps> = ({
     setForm((prev) => ({
       ...prev,
       materials: prev.materials.filter((_, i) => i !== index),
+    }));
+  }
+
+  function addSuggestedMaterials() {
+    const currentIds = new Set(form.materials.map((item) => item.materialId));
+    const suggested = suggestedMaterialIdsForDamage(form.category)
+      .filter((materialId) => data.materialPrices.some((material) => material.id === materialId))
+      .filter((materialId) => !currentIds.has(materialId))
+      .map((materialId) => ({ materialId, quantity: 1 }));
+
+    if (!suggested.length) return;
+    setForm((prev) => ({
+      ...prev,
+      materials: [...prev.materials, ...suggested],
     }));
   }
 
@@ -199,23 +215,13 @@ export const Damages: React.FC<DamagesProps> = ({
                 <label className="field">
                   <span>Category</span>
                   <select value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value as DamageCategory })}>
-                    <option>Missing Shingles</option>
-                    <option>Flashing Damage</option>
-                    <option>Leaks</option>
-                    <option>Sagging</option>
-                    <option>Rot</option>
-                    <option>Moss/Algae</option>
-                    <option>Hail Damage</option>
-                    <option>Wind Damage</option>
-                    <option>Other</option>
+                    {DAMAGE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
                   </select>
                 </label>
                 <label className="field">
                   <span>Severity</span>
                   <select value={form.severity} onChange={(event) => setForm({ ...form, severity: event.target.value as DamageSeverity })}>
-                    <option>Minor</option>
-                    <option>Moderate</option>
-                    <option>Severe</option>
+                    {DAMAGE_SEVERITIES.map((severity) => <option key={severity}>{severity}</option>)}
                   </select>
                 </label>
               </div>
@@ -226,7 +232,10 @@ export const Damages: React.FC<DamagesProps> = ({
               <div className="split-grid">
                 <label className="field">
                   <span>Location</span>
-                  <input value={form.location} onChange={(event) => setForm({ ...form, location: event.target.value })} placeholder="Rear slope, chimney, valley..." />
+                  <input value={form.location} onChange={(event) => setForm({ ...form, location: event.target.value })} list="damage-location-options" placeholder="Rear slope, chimney, valley..." />
+                  <datalist id="damage-location-options">
+                    {DAMAGE_LOCATION_PRESETS.map((location) => <option key={location} value={location} />)}
+                  </datalist>
                 </label>
                 <label className="field">
                   <span>Estimated cost</span>
@@ -240,6 +249,9 @@ export const Damages: React.FC<DamagesProps> = ({
                   <span>Allocate materials needed for this damage item.</span>
                 </div>
                 <div className="list-grid">
+                  <div className="hero-actions">
+                    <button className="ghost" onClick={addSuggestedMaterials}>Add suggested materials</button>
+                  </div>
                   {form.materials.map((item, index) => (
                     <div key={`${item.materialId}-${index}`} className="selection-grid">
                       <label className="field">
@@ -250,7 +262,7 @@ export const Damages: React.FC<DamagesProps> = ({
                         >
                           {data.materialPrices.map((material) => (
                             <option key={material.id} value={material.id}>
-                              {material.label} ({material.unit})
+                              {material.category}: {material.label} ({material.unit})
                             </option>
                           ))}
                         </select>
@@ -264,6 +276,9 @@ export const Damages: React.FC<DamagesProps> = ({
                           onChange={(event) => updateMaterialLine(index, { ...item, quantity: Math.max(0, Number(event.target.value) || 0) })}
                         />
                       </label>
+                      <div className="status-note">
+                        {money((data.materialPrices.find((material) => material.id === item.materialId)?.price ?? 0) * item.quantity)}
+                      </div>
                       <div className="hero-actions">
                         <button className="ghost danger" onClick={() => removeMaterialLine(index)}>Remove material</button>
                       </div>
@@ -271,6 +286,9 @@ export const Damages: React.FC<DamagesProps> = ({
                   ))}
                   <div className="hero-actions">
                     <button className="ghost" onClick={addMaterialLine}>Add material</button>
+                  </div>
+                  <div className="status-note">
+                    Current damage material total: {money(damageMaterialTotal({ materials: form.materials }, data.materialPrices))}
                   </div>
                 </div>
               </div>
@@ -288,6 +306,7 @@ export const Damages: React.FC<DamagesProps> = ({
                           <input type="checkbox" checked={form.linkedPhotoIds.includes(photo.id)} onChange={() => togglePhoto(photo.id)} /> {photo.label}
                         </strong>
                         <span>{photo.category}</span>
+                        <small>{form.linkedPhotoIds.includes(photo.id) ? 'Linked to this damage' : 'Available for linking'}</small>
                       </label>
                     ))}
                   </div>
@@ -333,6 +352,19 @@ export const Damages: React.FC<DamagesProps> = ({
                     <span>Estimated materials: {money(materialTotal)}</span>
                     <span>Photos: {damage.linkedPhotoIds.length}</span>
                   </div>
+                  {damage.materials.length ? (
+                    <div className="linked-record-list">
+                      {damage.materials.map((item) => {
+                        const material = data.materialPrices.find((entry) => entry.id === item.materialId);
+                        return (
+                          <div key={`${damage.id}-${item.materialId}`} className="linked-record-row">
+                            <strong>{material?.label ?? item.materialId}</strong>
+                            <span>{item.quantity} {material?.unit ?? ''} · {material?.category ?? 'Material'}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                   <div className="hero-actions">
                     <button className="ghost" onClick={() => beginEdit(damage)}>Edit</button>
                     <button className="ghost danger" onClick={() => deleteDamage(damage.id)}>Delete</button>
@@ -342,6 +374,28 @@ export const Damages: React.FC<DamagesProps> = ({
             }) : <div className="empty">No damage records yet in this scope.</div>}
           </div>
         </div>
+        {selectedJobId ? (
+          <div className="card">
+            <div className="section-head">
+              <h3>Project allocation</h3>
+              <span>Materials linked through damage records</span>
+            </div>
+            <div className="mini-stats-grid">
+              <div className="mini-stat-card">
+                <span>Damage items</span>
+                <strong>{selectedJobDamages.length}</strong>
+              </div>
+              <div className="mini-stat-card">
+                <span>Material lines</span>
+                <strong>{selectedJobDamages.reduce((sum, damage) => sum + damage.materials.length, 0)}</strong>
+              </div>
+              <div className="mini-stat-card">
+                <span>Allocated value</span>
+                <strong>{money(selectedJobMaterialTotal)}</strong>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </section>
   );

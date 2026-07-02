@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { AppData, JobStatus, JobPriority, Job, View } from '../types';
 import { badgeTone, money, openAddressInMaps, openEmailClient, openPhoneDialer, uid } from '../lib';
 import { fetchJobWeather, type JobWeatherSnapshot } from '../weather';
+import { findCustomer, findCrewById, findEstimateForJob, findInspectionForCustomer, findInvoiceForJob, findJob } from '../appLookups';
 
 interface JobForm {
   title: string;
@@ -75,13 +76,13 @@ export const Jobs: React.FC<JobsProps> = ({
     });
   }, [jobSearch, selectedCustomerId, customerJobs, data.jobs, data.customers]);
 
-  const selectedCustomer = data.customers.find((customer) => customer.id === selectedCustomerId) || null;
-  const selectedJob = data.jobs.find((job) => job.id === selectedJobId) || null;
-  const selectedJobCustomer = data.customers.find((customer) => customer.id === selectedJob?.customerId) || null;
-  const selectedJobCrew = data.crews.find((crew) => crew.id === selectedJob?.crewId) || null;
-  const selectedEstimate = data.estimates.find((estimate) => estimate.jobId === selectedJobId) || null;
-  const selectedInvoice = data.invoices.find((invoice) => invoice.jobId === selectedJobId) || null;
-  const selectedInspection = data.inspections.find((inspection) => inspection.customerId === selectedJobCustomer?.id) || null;
+  const selectedCustomer = useMemo(() => findCustomer(data, selectedCustomerId), [data, selectedCustomerId]);
+  const selectedJob = useMemo(() => findJob(data, selectedJobId), [data, selectedJobId]);
+  const selectedJobCustomer = useMemo(() => findCustomer(data, selectedJob?.customerId), [data, selectedJob?.customerId]);
+  const selectedJobCrew = useMemo(() => findCrewById(data, selectedJob?.crewId), [data, selectedJob?.crewId]);
+  const selectedEstimate = useMemo(() => findEstimateForJob(data, selectedJobId), [data, selectedJobId]);
+  const selectedInvoice = useMemo(() => findInvoiceForJob(data, selectedJobId), [data, selectedJobId]);
+  const selectedInspection = useMemo(() => findInspectionForCustomer(data, selectedJobCustomer?.id), [data, selectedJobCustomer?.id]);
   const activeJobs = data.jobs.filter((job) => job.status !== 'Complete' && job.status !== 'Paid');
   const highPriorityJobs = data.jobs.filter((job) => job.priority === 'High');
 

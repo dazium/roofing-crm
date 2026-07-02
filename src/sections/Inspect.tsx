@@ -431,6 +431,20 @@ export const Inspect: React.FC<InspectProps> = ({
                     />
                   </label>
                 </div>
+                <div className="mini-stats-grid inspection-summary-stats">
+                  <div className="mini-stat-card">
+                    <span>Photos saved</span>
+                    <strong>{selectedInspection?.photos.length ?? 0}</strong>
+                  </div>
+                  <div className="mini-stat-card">
+                    <span>Damage records</span>
+                    <strong>{data.damages.filter((damage) => damage.customerId === selectedCustomerId).length}</strong>
+                  </div>
+                  <div className="mini-stat-card">
+                    <span>Damage photos linked</span>
+                    <strong>{data.damages.filter((damage) => damage.customerId === selectedCustomerId).reduce((sum, damage) => sum + damage.linkedPhotoIds.length, 0)}</strong>
+                  </div>
+                </div>
                 <div className="primary-actions">
                   <button onClick={saveAndContinue}>Save and go to proposal</button>
                   <button className="ghost" onClick={saveInspection}>Save inspection only</button>

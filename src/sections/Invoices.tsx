@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { AppData, Invoice, InvoiceHistoryAction, InvoiceHistoryEntry, InvoiceStatus } from '../types';
-import { badgeTone, buildInvoicePdfHtml, money, openAddressInMaps, openEmailClient, openPhoneDialer, reconcileInvoice, uid } from '../lib';
+import { INVOICE_STATUSES, badgeTone, buildInvoiceEmailDraft, buildInvoicePdfHtml, money, openAddressInMaps, openEmailClient, openPhoneDialer, reconcileInvoice, uid } from '../lib';
+import { findCustomer, findEstimateForJob, findJob } from '../appLookups';
 
 interface InvoicesProps {
   data: AppData;
@@ -81,6 +82,8 @@ export const Invoices: React.FC<InvoicesProps> = ({
   const [showInvoiceFormDetails, setShowInvoiceFormDetails] = useState(false);
   const [showInvoiceBoardDetails, setShowInvoiceBoardDetails] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(data.invoices[0]?.id ?? null);
+  const [emailTemplate, setEmailTemplate] = useState<'invoice' | 'reminder' | 'overdue'>('invoice');
+  const [emailRecipient, setEmailRecipient] = useState('');
   const [paymentDraft, setPaymentDraft] = useState(0);
   const [billingCustomerId, setBillingCustomerId] = useState<string>(
     selectedCustomerId
@@ -90,17 +93,17 @@ export const Invoices: React.FC<InvoicesProps> = ({
   );
 
   const initialJobId = selectedJobId ?? data.jobs[0]?.id ?? '';
-  const [invoiceForm, setInvoiceForm] = useState<InvoiceForm>({
+  const [invoiceForm, setInvoiceForm] = useState<InvoiceForm>(() => ({
     jobId: initialJobId,
     invoiceNumber: nextInvoiceNumber(data.invoices),
-    amount: data.estimates.find((estimate) => estimate.jobId === initialJobId)?.totalPrice ?? 0,
+    amount: findEstimateForJob(data, initialJobId)?.totalPrice ?? 0,
     paidAmount: 0,
     status: 'Draft',
     dueDate: '',
     issuedDate: new Date().toISOString().slice(0, 10),
     paidDate: '',
     notes: '',
-  });
+  }));
 
   const availableJobs = useMemo(
     () => (billingCustomerId ? data.jobs.filter((job) => job.customerId === billingCustomerId) : data.jobs),
@@ -112,12 +115,21 @@ export const Invoices: React.FC<InvoicesProps> = ({
     [data.invoices],
   );
 
-  const selectedInvoice = data.invoices.find((invoice) => invoice.id === selectedInvoiceId) ?? null;
-  const selectedInvoiceJob = data.jobs.find((job) => job.id === selectedInvoice?.jobId) ?? null;
-  const selectedInvoiceCustomer = data.customers.find((customer) => customer.id === selectedInvoiceJob?.customerId) ?? null;
+  const selectedInvoice = useMemo(() => (selectedInvoiceId ? data.invoices.find((invoice) => invoice.id === selectedInvoiceId) ?? null : null), [data, selectedInvoiceId]);
+  const selectedInvoiceJob = useMemo(() => findJob(data, selectedInvoice?.jobId), [data, selectedInvoice?.jobId]);
+  const selectedInvoiceCustomer = useMemo(() => findCustomer(data, selectedInvoiceJob?.customerId), [data, selectedInvoiceJob?.customerId]);
   const selectedInvoiceHistory = selectedInvoice
     ? data.invoiceHistory.filter((entry) => entry.invoiceId === selectedInvoice.id).slice(0, 8)
     : [];
+  const selectedEmailDraft = selectedInvoice && selectedInvoiceJob && selectedInvoiceCustomer
+    ? buildInvoiceEmailDraft({
+        companyProfile: data.companyProfile,
+        customerName: selectedInvoiceCustomer.name,
+        jobTitle: selectedInvoiceJob.title,
+        invoice: selectedInvoice,
+        template: emailTemplate,
+      })
+    : null;
 
   const outstandingInvoices = data.invoices.filter((invoice) => invoice.status !== 'Paid');
   const overdueInvoices = data.invoices.filter((invoice) => invoice.status === 'Overdue');
@@ -127,18 +139,18 @@ export const Invoices: React.FC<InvoicesProps> = ({
     return days !== null && days >= 0 && days <= 3;
   });
 
-  const invoiceJob = data.jobs.find((job) => job.id === invoiceForm.jobId) ?? null;
-  const invoiceCustomer = data.customers.find((customer) => customer.id === invoiceJob?.customerId) ?? null;
-  const selectedEstimate = data.estimates.find((estimate) => estimate.jobId === invoiceForm.jobId) ?? null;
-  const selectedBillingCustomer = data.customers.find((customer) => customer.id === billingCustomerId) ?? null;
+  const invoiceJob = useMemo(() => findJob(data, invoiceForm.jobId), [data, invoiceForm.jobId]);
+  const invoiceCustomer = useMemo(() => findCustomer(data, invoiceJob?.customerId), [data, invoiceJob?.customerId]);
+  const selectedEstimate = useMemo(() => findEstimateForJob(data, invoiceForm.jobId), [data, invoiceForm.jobId]);
+  const selectedBillingCustomer = useMemo(() => findCustomer(data, billingCustomerId || null), [data, billingCustomerId]);
 
   useEffect(() => {
     const nextCustomerId = selectedCustomerId
-      ?? data.jobs.find((job) => job.id === selectedJobId)?.customerId
+      ?? findJob(data, selectedJobId)?.customerId
       ?? data.customers[0]?.id
       ?? '';
     setBillingCustomerId(nextCustomerId);
-  }, [data.customers, data.jobs, selectedCustomerId, selectedJobId]);
+  }, [data, selectedCustomerId, selectedJobId]);
 
   useEffect(() => {
     const nextJobId = selectedJobId ?? '';
@@ -148,15 +160,19 @@ export const Invoices: React.FC<InvoicesProps> = ({
       return {
         ...prev,
         jobId: nextJobId,
-        amount: data.estimates.find((estimate) => estimate.jobId === nextJobId)?.totalPrice ?? 0,
+        amount: findEstimateForJob(data, nextJobId)?.totalPrice ?? 0,
         paidAmount: 0,
       };
     });
-  }, [data.estimates, selectedJobId]);
+  }, [data, selectedJobId]);
 
   useEffect(() => {
     setPaymentDraft(0);
   }, [selectedInvoiceId]);
+
+  useEffect(() => {
+    setEmailRecipient(selectedInvoiceCustomer?.email ?? '');
+  }, [selectedInvoiceCustomer?.email, selectedInvoiceId]);
 
   useEffect(() => {
     const reconciled = data.invoices.map((invoice) => reconcileInvoice(invoice));
@@ -179,7 +195,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
     setInvoiceForm({
       jobId,
       invoiceNumber: nextInvoiceNumber(data.invoices),
-      amount: data.estimates.find((estimate) => estimate.jobId === jobId)?.totalPrice ?? 0,
+      amount: findEstimateForJob(data, jobId)?.totalPrice ?? 0,
       paidAmount: 0,
       status: 'Draft',
       dueDate: '',
@@ -281,12 +297,20 @@ export const Invoices: React.FC<InvoicesProps> = ({
     setSelectedInvoiceId(nextInvoices[0]?.id ?? null);
   }
 
-  async function exportInvoicePdf(invoice: Invoice) {
+  function appendInvoiceHistory(invoice: Invoice, action: InvoiceHistoryAction, message: string, invoices = data.invoices) {
+    setData({
+      ...data,
+      invoices,
+      invoiceHistory: pushInvoiceHistory(data.invoiceHistory, invoice, action, message),
+    });
+  }
+
+  function buildInvoiceHtml(invoice: Invoice) {
     const job = data.jobs.find((entry) => entry.id === invoice.jobId);
     const customer = data.customers.find((entry) => entry.id === job?.customerId);
-    if (!job || !customer) return;
+    if (!job || !customer) return null;
 
-    const html = buildInvoicePdfHtml({
+    return buildInvoicePdfHtml({
       companyProfile: data.companyProfile,
       customerName: customer.name,
       customerAddress: customer.address,
@@ -295,12 +319,21 @@ export const Invoices: React.FC<InvoicesProps> = ({
       jobTitle: job.title,
       invoice,
     });
+  }
+
+  async function exportInvoicePdf(invoice: Invoice) {
+    const html = buildInvoiceHtml(invoice);
+    if (!html) return;
+    const job = data.jobs.find((entry) => entry.id === invoice.jobId);
+    const customer = data.customers.find((entry) => entry.id === job?.customerId);
+    if (!job || !customer) return;
 
     const safeCustomer = customer.name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'invoice';
     const suggestedName = `${safeCustomer}-${invoice.invoiceNumber.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.pdf`;
 
     if (window.roofingcrmDesktop?.exportEstimatePdf) {
       await window.roofingcrmDesktop.exportEstimatePdf({ html, suggestedName });
+      appendInvoiceHistory(invoice, 'Status Changed', `PDF export prepared as ${suggestedName}.`);
       return;
     }
 
@@ -311,6 +344,18 @@ export const Invoices: React.FC<InvoicesProps> = ({
     printWindow.document.close();
     printWindow.focus();
     printWindow.print();
+    appendInvoiceHistory(invoice, 'Status Changed', `PDF print preview opened for ${invoice.invoiceNumber}.`);
+  }
+
+  function previewInvoicePdf(invoice: Invoice) {
+    const html = buildInvoiceHtml(invoice);
+    if (!html) return;
+    const previewWindow = window.open('', '_blank', 'noopener,noreferrer,width=900,height=1200');
+    if (!previewWindow) return;
+    previewWindow.document.open();
+    previewWindow.document.write(html);
+    previewWindow.document.close();
+    appendInvoiceHistory(invoice, 'Status Changed', `Invoice preview opened for ${invoice.invoiceNumber}.`);
   }
 
   function handleCustomerChange(customerId: string) {
@@ -357,22 +402,50 @@ export const Invoices: React.FC<InvoicesProps> = ({
     setPaymentDraft(0);
   }
 
-  function sendPaymentReminder(invoice: Invoice) {
+  function prepareInvoiceEmail(invoice: Invoice, template: 'invoice' | 'reminder' | 'overdue') {
     const job = data.jobs.find((entry) => entry.id === invoice.jobId);
     const customer = data.customers.find((entry) => entry.id === job?.customerId);
-    if (!customer?.email) {
-      window.alert('Add a customer email before sending reminders.');
+    const recipient = emailRecipient.trim() || customer?.email?.trim() || '';
+    if (!recipient) {
+      window.alert('Add a customer email before preparing invoice email.');
       return;
     }
-    const subject = encodeURIComponent(`Payment reminder: ${invoice.invoiceNumber}`);
-    const body = encodeURIComponent(
-      `Hi ${customer.name},\n\nThis is a reminder that invoice ${invoice.invoiceNumber} has ${money(invoice.balanceDue)} outstanding and is due on ${invoice.dueDate || 'the due date on file'}.\n\nThanks,\n${data.companyProfile.name || 'RoofingCRM'}`,
-    );
-    window.open(`mailto:${customer.email}?subject=${subject}&body=${body}`, '_blank', 'noopener,noreferrer');
+    const draft = buildInvoiceEmailDraft({
+      companyProfile: data.companyProfile,
+      customerName: customer?.name ?? 'customer',
+      jobTitle: job?.title ?? 'roofing project',
+      invoice,
+      template,
+    });
+    const subject = encodeURIComponent(draft.subject);
+    const body = encodeURIComponent(draft.body);
+    window.open(`mailto:${recipient}?subject=${subject}&body=${body}`, '_blank', 'noopener,noreferrer');
+    const nextStatus = invoice.status === 'Draft' && template === 'invoice' ? 'Sent' : invoice.status;
+    const nextInvoices = data.invoices.map((entry) => entry.id === invoice.id ? reconcileInvoice({ ...entry, status: nextStatus }) : entry);
+    const updated = nextInvoices.find((entry) => entry.id === invoice.id) ?? invoice;
     setData({
       ...data,
-      invoiceHistory: pushInvoiceHistory(data.invoiceHistory, invoice, 'Reminder Sent', `Payment reminder prepared for ${customer.email}.`),
+      invoices: nextInvoices,
+      invoiceHistory: pushInvoiceHistory(
+        data.invoiceHistory,
+        updated,
+        template === 'invoice' ? 'Email Prepared' : 'Reminder Sent',
+        `${template === 'invoice' ? 'Invoice email' : template === 'overdue' ? 'Overdue email' : 'Payment reminder'} prepared for ${recipient}.`,
+      ),
     });
+  }
+
+  async function copyInvoiceEmailDraft() {
+    if (!selectedEmailDraft) return;
+    const text = `Subject: ${selectedEmailDraft.subject}\n\n${selectedEmailDraft.body}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      if (selectedInvoice) {
+        appendInvoiceHistory(selectedInvoice, 'Email Prepared', `Email draft copied for ${emailRecipient || selectedInvoiceCustomer?.email || 'recipient'}.`);
+      }
+    } catch {
+      window.alert('Could not copy the email draft from this browser context.');
+    }
   }
 
   return (
@@ -448,11 +521,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
                   value={invoiceForm.status}
                   onChange={(event) => setInvoiceForm({ ...invoiceForm, status: event.target.value as InvoiceStatus })}
                 >
-                  <option>Draft</option>
-                  <option>Sent</option>
-                  <option>Partial</option>
-                  <option>Paid</option>
-                  <option>Overdue</option>
+                  {INVOICE_STATUSES.map((status) => <option key={status}>{status}</option>)}
                 </select>
               </label>
             </div>
@@ -643,8 +712,8 @@ export const Invoices: React.FC<InvoicesProps> = ({
           </div>
           <div className="list-grid">
             {sortedInvoices.map((invoice) => {
-              const job = data.jobs.find((entry) => entry.id === invoice.jobId);
-              const customer = data.customers.find((entry) => entry.id === job?.customerId);
+              const job = findJob(data, invoice.jobId);
+              const customer = findCustomer(data, job?.customerId);
               return (
                 <button
                   key={invoice.id}
@@ -753,14 +822,73 @@ export const Invoices: React.FC<InvoicesProps> = ({
                   )) : <div className="empty">No history yet for this invoice.</div>}
                 </div>
               </div>
+              <div className="summary-box invoice-delivery-panel">
+                <div className="section-subhead">
+                  <h4>Email delivery</h4>
+                  <span>Recipient, template, and draft preview</span>
+                </div>
+                <div className="split-grid">
+                  <label className="field">
+                    <span>Recipient</span>
+                    <input
+                      type="email"
+                      placeholder="customer@example.com"
+                      value={emailRecipient}
+                      onChange={(event) => setEmailRecipient(event.target.value)}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Template</span>
+                    <select value={emailTemplate} onChange={(event) => setEmailTemplate(event.target.value as 'invoice' | 'reminder' | 'overdue')}>
+                      <option value="invoice">Invoice delivery</option>
+                      <option value="reminder">Payment reminder</option>
+                      <option value="overdue">Overdue follow-up</option>
+                    </select>
+                  </label>
+                </div>
+                {selectedEmailDraft ? (
+                  <div className="email-preview-box">
+                    <span>Subject</span>
+                    <strong>{selectedEmailDraft.subject}</strong>
+                    <span>Body</span>
+                    <pre>{selectedEmailDraft.body}</pre>
+                  </div>
+                ) : (
+                  <div className="empty">Select an invoice with a linked job and customer to preview the email.</div>
+                )}
+                <div className="hero-actions">
+                  <button className="ghost" onClick={copyInvoiceEmailDraft} disabled={!selectedEmailDraft}>Copy draft</button>
+                  <button className="ghost" onClick={() => prepareInvoiceEmail(selectedInvoice, emailTemplate)} disabled={!selectedEmailDraft}>Open email</button>
+                </div>
+              </div>
+              <div className="summary-box">
+                <div className="section-subhead">
+                  <h4>Export</h4>
+                  <span>Preview the invoice or prepare the PDF handoff</span>
+                </div>
+                <div className="invoice-export-grid">
+                  <div>
+                    <span>Customer</span>
+                    <strong>{selectedInvoiceCustomer?.name ?? 'Unknown customer'}</strong>
+                  </div>
+                  <div>
+                    <span>File</span>
+                    <strong>{selectedInvoice.invoiceNumber.toLowerCase()} invoice</strong>
+                  </div>
+                </div>
+                <div className="hero-actions">
+                  <button className="ghost" onClick={() => previewInvoicePdf(selectedInvoice)}>Preview invoice</button>
+                  <button className="ghost" onClick={() => exportInvoicePdf(selectedInvoice)}>Export PDF</button>
+                </div>
+              </div>
             </div>
             <div className="hero-actions">
-              <button className="ghost" onClick={() => exportInvoicePdf(selectedInvoice)}>Export PDF</button>
               <button className="ghost" onClick={() => recordPayment(selectedInvoice.id)} disabled={paymentDraft <= 0 || selectedInvoice.balanceDue <= 0}>Record payment</button>
-              <button className="ghost" onClick={() => sendPaymentReminder(selectedInvoice)} disabled={selectedInvoice.balanceDue <= 0}>Send reminder</button>
               <button className="ghost" onClick={() => updateInvoiceStatus(selectedInvoice.id, 'Sent')}>Mark sent</button>
+              <button className="ghost" onClick={() => updateInvoiceStatus(selectedInvoice.id, 'Viewed')}>Mark viewed</button>
               <button className="ghost" onClick={() => updateInvoiceStatus(selectedInvoice.id, 'Partial')}>Mark partial</button>
               <button className="ghost" onClick={() => updateInvoiceStatus(selectedInvoice.id, 'Paid')}>Mark paid</button>
+              <button className="ghost danger" onClick={() => updateInvoiceStatus(selectedInvoice.id, 'Cancelled')}>Cancel invoice</button>
               <button className="ghost danger" onClick={() => deleteInvoice(selectedInvoice.id)}>Delete invoice</button>
             </div>
           </div>

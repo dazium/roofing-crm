@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { StorageMeta, StorageDriver, MaterialPrice } from '../storage';
 import type { AppData, CompanyProfile, MaterialPriceHistoryEntry, MaterialPriceSetting } from '../types';
-import { companyDisplayName, companyShortName, companyTagline, openEmailClient, openExternalUrl, openPhoneDialer, uid } from '../lib';
+import { MATERIAL_CATEGORIES, companyDisplayName, companyShortName, companyTagline, hasDesktopBridge, openEmailClient, openExternalUrl, openPhoneDialer, uid } from '../lib';
 
 interface SettingsProps {
   data: AppData;
@@ -28,15 +28,30 @@ export const Settings: React.FC<SettingsProps> = ({
 }) => {
   const [scraperMessage, setScraperMessage] = useState('');
   const [isScrapingPrices, setIsScrapingPrices] = useState(false);
+  const desktopBridgeAvailable = hasDesktopBridge();
 
   function materialSourceLabel(item: MaterialPriceSetting) {
     return item.supplier.trim() || 'Manual';
   }
 
   function materialTimestampLabel(item: MaterialPriceSetting) {
-    const timestamp = Date.parse(item.updatedAt);
-    return Number.isNaN(timestamp) ? 'Not available' : new Date(timestamp).toLocaleString();
+    const ts = Date.parse(item.updatedAt);
+    return Number.isNaN(ts) ? 'Not available' : new Date(ts).toLocaleString();
   }
+
+  function materialAgeDays(updatedAt: string): number | null {
+    const ts = Date.parse(updatedAt);
+    if (Number.isNaN(ts)) return null;
+    return Math.floor((Date.now() - ts) / 86400000);
+  }
+
+  function materialAgeTone(days: number | null): string {
+    if (days === null) return 'warning';
+    if (days > 60) return 'warning';
+    if (days > 21) return 'orange';
+    return 'green';
+  }
+
 
   function isScrapedMaterial(item: MaterialPriceSetting) {
     return item.supplier.toLowerCase().includes('scrape');
@@ -52,7 +67,7 @@ export const Settings: React.FC<SettingsProps> = ({
     }));
   }
 
-  function updateMaterialPrice(id: string, field: keyof Pick<MaterialPriceSetting, 'label' | 'unit' | 'price' | 'supplier'>, value: string) {
+  function updateMaterialPrice(id: string, field: keyof Pick<MaterialPriceSetting, 'label' | 'category' | 'unit' | 'price' | 'supplier'>, value: string) {
     setData((prev) => ({
       ...prev,
       materialPrices: prev.materialPrices.map((item) => item.id === id
@@ -94,7 +109,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
   async function syncScrapedPrices() {
     if (!window.roofingcrmDesktop?.runMaterialScraper || !window.roofingcrmDesktop?.getLatestMaterialPrices) {
-      setScraperMessage('Desktop scraping is only available in the Electron app.');
+      setScraperMessage(desktopBridgeAvailable ? 'Material scraper bridge is unavailable.' : 'Desktop scraping is only available in the Electron app.');
       return;
     }
 
@@ -160,6 +175,7 @@ export const Settings: React.FC<SettingsProps> = ({
           const nextItem = {
             ...item,
             label: mappedMeta.label ?? item.label,
+            category: item.category,
             unit: mappedMeta.unit,
             price: Math.max(0, Number(mappedRow.price) || 0),
             supplier: `${mappedRow.store} scrape (${mappedRow.product})`,
@@ -333,6 +349,7 @@ export const Settings: React.FC<SettingsProps> = ({
             <h3>Data safety</h3>
             <span>{storageMode === 'sqlite-native' ? 'Native SQLite storage' : 'Browser storage fallback'}</span>
           </div>
+            {!desktopBridgeAvailable && <div className="status-note warning">Desktop features (PDF export and material scraper) need the Electron app. Browser/Android builds fall back to print or local save only.</div>}
           <div className="list-grid">
             <div className="status-note">{storageMessage}</div>
             <div className="detail-stack">
@@ -417,6 +434,7 @@ export const Settings: React.FC<SettingsProps> = ({
             <div className="proposal-table material-price-table">
               <div className="proposal-table-head material-price-table-head">
                 <span>Material</span>
+                <span>Category</span>
                 <span>Unit</span>
                 <span>Price</span>
                 <span>Supplier</span>
@@ -425,6 +443,11 @@ export const Settings: React.FC<SettingsProps> = ({
                 <div className="material-price-card" key={item.id}>
                   <div className="proposal-row material-price-row">
                   <input value={item.label} onChange={(event) => updateMaterialPrice(item.id, 'label', event.target.value)} />
+                  <select value={item.category} onChange={(event) => updateMaterialPrice(item.id, 'category', event.target.value)}>
+                    {MATERIAL_CATEGORIES.map((category) => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
                   <select value={item.unit} onChange={(event) => updateMaterialPrice(item.id, 'unit', event.target.value)}>
                     <option value="bundle">bundle</option>
                     <option value="roll">roll</option>
@@ -436,9 +459,10 @@ export const Settings: React.FC<SettingsProps> = ({
                   <input value={item.supplier} onChange={(event) => updateMaterialPrice(item.id, 'supplier', event.target.value)} />
                   </div>
                   <div className="material-price-meta">
+                    <span>Taxonomy: {item.category}</span>
                     <span>Status: {isScrapedMaterial(item) ? 'Scraped' : 'Manual'}{scraperManagedMaterialIds.has(item.id) ? ' • scraper-mapped item' : ''}</span>
                     <span>Source: {materialSourceLabel(item)}</span>
-                    <span>Updated: {materialTimestampLabel(item)}</span>
+                    <span>Updated: {materialTimestampLabel(item)}{(() => { const days = materialAgeDays(item.updatedAt); return days !== null && days > 30 ? <span className={`stale-badge stale-${materialAgeTone(days)}`}>{days}d old</span> : null; })()}</span>
                   </div>
                 </div>
               ))}

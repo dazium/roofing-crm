@@ -66,6 +66,7 @@ export const Tasks: React.FC<TasksProps> = ({
   const [taskForm, setTaskForm] = useState<TaskForm>(createTaskForm());
   const [sortMode, setSortMode] = useState<TaskSortMode>('due-date');
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [taskFilter, setTaskFilter] = useState<'all' | 'blocked' | 'today' | 'overdue'>('all');
   const [editingTaskForm, setEditingTaskForm] = useState<TaskForm>(createTaskForm());
 
   const selectedCustomer = data.customers.find((customer) => customer.id === selectedCustomerId) ?? null;
@@ -79,8 +80,22 @@ export const Tasks: React.FC<TasksProps> = ({
     });
   }, [data.tasks, selectedCustomerId, selectedJobId]);
 
+  const today = new Date().toISOString().slice(0, 10);
+  const visibleTasks = useMemo(() => {
+    return filteredTasks.filter((task) => {
+      if (taskFilter === 'blocked') return task.status === 'Blocked';
+      if (taskFilter === 'today') return task.dueDate === today && task.status !== 'Done';
+      if (taskFilter === 'overdue') return task.dueDate && task.dueDate < today && task.status !== 'Done';
+      return true;
+    });
+  }, [filteredTasks, taskFilter, today]);
+
+  const blockedCount = filteredTasks.filter((task) => task.status === 'Blocked').length;
+  const dueTodayCount = filteredTasks.filter((task) => task.dueDate === today && task.status !== 'Done').length;
+  const overdueCount = filteredTasks.filter((task) => task.dueDate && task.dueDate < today && task.status !== 'Done').length;
+
   const sortedTasks = useMemo(() => {
-    const tasks = [...filteredTasks];
+    const tasks = [...visibleTasks];
 
     tasks.sort((a, b) => {
       if (sortMode === 'priority') {
@@ -101,7 +116,7 @@ export const Tasks: React.FC<TasksProps> = ({
     });
 
     return tasks;
-  }, [filteredTasks, sortMode]);
+  }, [visibleTasks, sortMode]);
 
   const openTasks = filteredTasks.filter((task) => task.status !== 'Done');
   const blockedTasks = filteredTasks.filter((task) => task.status === 'Blocked');
@@ -284,6 +299,12 @@ export const Tasks: React.FC<TasksProps> = ({
           <div className="section-head">
             <h3>Task summary</h3>
             <span>Quick view of what still needs movement</span>
+          </div>
+          <div className="hero-actions task-filter-actions">
+            <button className={`ghost${taskFilter === 'all' ? ' is-active' : ''}`} onClick={() => setTaskFilter('all')}>All ({filteredTasks.length})</button>
+            <button className={`ghost${taskFilter === 'blocked' ? ' is-active' : ''}`} onClick={() => setTaskFilter('blocked')}>Blocked ({blockedCount})</button>
+            <button className={`ghost${taskFilter === 'today' ? ' is-active' : ''}`} onClick={() => setTaskFilter('today')}>Due today ({dueTodayCount})</button>
+            <button className={`ghost${taskFilter === 'overdue' ? ' is-active' : ''}`} onClick={() => setTaskFilter('overdue')}>Overdue ({overdueCount})</button>
           </div>
           <div className="mini-stats-grid">
             <div className="mini-stat-card">

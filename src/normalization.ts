@@ -1,4 +1,5 @@
 import { seedData } from './data'
+import { inferMaterialCategory } from './lib'
 import type { AppData } from './types'
 
 export function normalizeAppData(partial?: Partial<AppData> | null): AppData {
@@ -18,7 +19,10 @@ export function normalizeAppData(partial?: Partial<AppData> | null): AppData {
     }),
     invoiceHistory: partial?.invoiceHistory ?? [],
     inspections: partial?.inspections ?? seedData.inspections,
-    materialPrices: partial?.materialPrices ?? seedData.materialPrices,
+    materialPrices: (partial?.materialPrices ?? seedData.materialPrices).map((material) => ({
+      ...material,
+      category: material.category ?? inferMaterialCategory(`${material.id} ${material.label}`),
+    })),
     materialPriceHistory: partial?.materialPriceHistory ?? [],
     tasks: partial?.tasks ?? seedData.tasks,
     crews: (partial?.crews ?? seedData.crews).map((crew) => ({
@@ -27,6 +31,7 @@ export function normalizeAppData(partial?: Partial<AppData> | null): AppData {
     })),
     appointments: partial?.appointments ?? seedData.appointments,
     damages: partial?.damages ?? seedData.damages,
+    estimateVersions: partial?.estimateVersions ?? seedData.estimateVersions ?? [],
     timeLogs: partial?.timeLogs ?? seedData.timeLogs,
   }
 
@@ -41,4 +46,54 @@ export function normalizeAppData(partial?: Partial<AppData> | null): AppData {
   }
 
   return normalized
+}
+
+export type AppDataValidationIssue = {
+  section: keyof AppData | 'root'
+  message: string
+}
+
+const REQUIRED_COLLECTIONS: Array<{ key: keyof AppData; label: string; allowEmpty: boolean }> = [
+  { key: 'companyProfile', label: 'companyProfile', allowEmpty: false },
+  { key: 'customers', label: 'customers', allowEmpty: false },
+  { key: 'jobs', label: 'jobs', allowEmpty: true },
+  { key: 'estimates', label: 'estimates', allowEmpty: true },
+  { key: 'invoices', label: 'invoices', allowEmpty: true },
+  { key: 'invoiceHistory', label: 'invoiceHistory', allowEmpty: true },
+  { key: 'inspections', label: 'inspections', allowEmpty: true },
+  { key: 'materialPrices', label: 'materialPrices', allowEmpty: true },
+  { key: 'materialPriceHistory', label: 'materialPriceHistory', allowEmpty: true },
+  { key: 'tasks', label: 'tasks', allowEmpty: true },
+  { key: 'crews', label: 'crews', allowEmpty: true },
+  { key: 'appointments', label: 'appointments', allowEmpty: true },
+  { key: 'damages', label: 'damages', allowEmpty: true },
+  { key: 'estimateVersions', label: 'estimateVersions', allowEmpty: true },
+  { key: 'timeLogs', label: 'timeLogs', allowEmpty: true },
+]
+
+export function validateAppDataImport(input: unknown): { ok: true } | { ok: false; issues: AppDataValidationIssue[] } {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    return { ok: false, issues: [{ section: 'root', message: 'Backup root must be a JSON object.' }] }
+  }
+
+  const record = input as Record<string, unknown>
+  const issues: AppDataValidationIssue[] = []
+
+  for (const collection of REQUIRED_COLLECTIONS) {
+    const value = record[collection.key]
+    if (collection.key === 'companyProfile') {
+      if (!value || typeof value !== 'object') {
+        issues.push({ section: collection.key, message: 'Company profile is missing or not an object.' })
+      }
+      continue
+    }
+    if (value !== undefined && !Array.isArray(value)) {
+      issues.push({ section: collection.key, message: `${collection.label} must be an array if present.` })
+    }
+    if (value === undefined && !collection.allowEmpty) {
+      issues.push({ section: collection.key, message: `${collection.label} is required in a backup.` })
+    }
+  }
+
+  return issues.length ? { ok: false, issues } : { ok: true }
 }

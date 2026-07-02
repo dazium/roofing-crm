@@ -15,7 +15,8 @@ import { Photos } from './sections/Photos';
 import { CrewMode } from './sections/CrewMode';
 import { Locations } from './sections/Locations';
 import { seedData } from './data';
-import { defaultEstimate, optimizeInspectionPhoto, uid } from './lib';
+import { normalizeAppData, validateAppDataImport } from './normalization';
+import { defaultEstimate, optimizeInspectionPhoto, uid, validateInspectionPhotoFile } from './lib';
 import { getStorageMeta, loadAppData, saveAppData, type StorageDriver, type StorageMeta } from './storage';
 import type { AppData, DamageType, Estimate, Inspection, InspectionPhoto, PhotoCategory, Urgency, View } from './types';
 
@@ -131,7 +132,11 @@ export default function App() {
   const [photoLabel, setPhotoLabel] = useState('');
 
   const [jobSearch, setJobSearch] = useState('');
-  const [estimateForm, setEstimateForm] = useState<Estimate>(() => createEstimateDraft(seedData.jobs[0]?.id ?? '', seedData.estimates.find((estimate) => estimate.jobId === seedData.jobs[0]?.id) ?? null));
+  const [estimateForm, setEstimateForm] = useState<Estimate>(() => {
+    const jobId = seedData.jobs[0]?.id ?? '';
+    const seed = seedData.estimates.find((estimate: Estimate) => estimate.jobId === jobId) ?? null;
+    return createEstimateDraft(jobId, seed);
+  });
   const [inspectionForm, setInspectionForm] = useState<InspectionForm>(() => createInspectionDraft(seedData.inspections.find((inspection) => inspection.customerId === seedData.customers[0]?.id) ?? null));
   const [storageMode, setStorageMode] = useState<StorageDriver>('localstorage-browser');
   const [storageMeta, setStorageMeta] = useState<StorageMeta>({});
@@ -253,35 +258,22 @@ export default function App() {
     try {
       const parsed = JSON.parse(await file.text()) as Partial<AppData>;
 
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        throw new Error('Backup root must be an object.');
+      const validation = validateAppDataImport(parsed);
+      if (!validation.ok) {
+        const summary = validation.issues.map((issue) => `${issue.section}: ${issue.message}`).join("; ");
+        setStorageMessage(`Backup import failed - ${summary}`);
+        return;
       }
 
-      const importedData: AppData = {
-        companyProfile: parsed.companyProfile && typeof parsed.companyProfile === 'object' && !Array.isArray(parsed.companyProfile)
-          ? { ...seedData.companyProfile, ...parsed.companyProfile }
-          : seedData.companyProfile,
-        customers: Array.isArray(parsed.customers) ? parsed.customers : seedData.customers,
-        jobs: Array.isArray(parsed.jobs) ? parsed.jobs : seedData.jobs,
-        estimates: Array.isArray(parsed.estimates) ? parsed.estimates : seedData.estimates,
-        invoices: Array.isArray(parsed.invoices) ? parsed.invoices : seedData.invoices,
-        invoiceHistory: Array.isArray(parsed.invoiceHistory) ? parsed.invoiceHistory : seedData.invoiceHistory,
-        inspections: Array.isArray(parsed.inspections) ? parsed.inspections : seedData.inspections,
-        materialPrices: Array.isArray(parsed.materialPrices) ? parsed.materialPrices : seedData.materialPrices,
-        materialPriceHistory: Array.isArray(parsed.materialPriceHistory) ? parsed.materialPriceHistory : seedData.materialPriceHistory,
-        tasks: Array.isArray(parsed.tasks) ? parsed.tasks : seedData.tasks,
-        crews: Array.isArray(parsed.crews) ? parsed.crews : seedData.crews,
-        appointments: Array.isArray(parsed.appointments) ? parsed.appointments : seedData.appointments,
-        damages: Array.isArray(parsed.damages) ? parsed.damages : seedData.damages,
-        timeLogs: Array.isArray(parsed.timeLogs) ? parsed.timeLogs : seedData.timeLogs,
-      };
+      const importedData: AppData = normalizeAppData(parsed);
 
       setData(importedData);
       applySelection(importedData, importedData.customers[0]?.id ?? null, null);
       setView('dashboard');
       setStorageMessage(`Imported backup: ${file.name}`);
-    } catch {
-      setStorageMessage('Backup import failed. Choose a valid RoofingCRM JSON backup.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown JSON error';
+      setStorageMessage(`Backup import failed - ${message}`);
     }
 
     event.target.value = '';
@@ -289,6 +281,11 @@ export default function App() {
 
   async function appendPhoto(file: File) {
     if (!selectedCustomerId) return;
+    const validation = validateInspectionPhotoFile(file);
+    if (!validation.ok) {
+      window.alert(validation.message);
+      return;
+    }
     const optimizedPhoto = await optimizeInspectionPhoto(file);
     const newPhoto: InspectionPhoto = {
       ...optimizedPhoto,
@@ -443,8 +440,14 @@ export default function App() {
     { key: 'settings', label: 'Settings', caption: data.companyProfile.name.trim() || 'Set company profile' },
   ];
   const visibleNavItems = simpleView
-    ? navItems.filter((item) => ['dashboard', 'customers', 'inspect', 'jobs', 'estimates', 'invoices', 'tasks', 'settings'].includes(item.key))
+    ? navItems.filter((item) => ['dashboard', 'customers', 'inspect', 'photos', 'jobs', 'estimates', 'invoices', 'tasks', 'settings'].includes(item.key))
     : navItems;
+  const quickActions: { label: string; view: View; tone?: 'primary' | 'ghost' }[] = [
+    { label: 'Start inspection', view: 'inspect', tone: 'primary' },
+    { label: 'Add photos', view: 'photos', tone: 'ghost' },
+    { label: 'Build estimate', view: 'estimates', tone: 'ghost' },
+    { label: 'Collect payment', view: 'invoices', tone: 'ghost' },
+  ];
 
   return (
     <div className={`page-shell ${simpleView ? 'simple-view' : ''}`}>
@@ -510,6 +513,17 @@ export default function App() {
                 <strong>{storageMode === 'sqlite-native' ? 'SQLite' : 'Browser'}</strong>
               </div>
             </div>
+          </div>
+          <div className="quick-action-bar" aria-label="Common actions">
+            {quickActions.map((action) => (
+              <button
+                key={action.label}
+                className={action.tone === 'ghost' ? 'ghost' : ''}
+                onClick={() => setView(action.view)}
+              >
+                {action.label}
+              </button>
+            ))}
           </div>
           <div className="main-nav mobile-nav">
             {visibleNavItems.map((item) => (
@@ -653,6 +667,7 @@ export default function App() {
               setPhotoCategory={setPhotoCategory}
               photoLabel={photoLabel}
               setPhotoLabel={setPhotoLabel}
+              setData={setData}
               handlePhotoUpload={handlePhotoUpload}
               removeInspectionPhoto={removeInspectionPhoto}
               galleryInputRef={galleryInputRef}

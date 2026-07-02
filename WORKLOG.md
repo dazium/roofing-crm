@@ -12,6 +12,34 @@ Keep it short and current.
 
 ---
 
+## 2026-05-29
+- What changed: Added `ACTION-LIST-25.md` with a concrete 25-item execution list that keeps desktop and Android parity visible. Added shared app lookup helpers in `src/appLookups.ts`, wired app-level selection/workflow state through them, reused those helpers in selection resolution, added smoke coverage for common workflow lookups, and added `npm run verify` to run lint, tests, build, and Android Capacitor sync.
+- Current state: `npm run lint` passes. `npm run test` passes with 15 tests. `npm run build` passes.
+- Blockers: Manual Electron QA and Android device/emulator QA remain open, especially for platform handoffs, persistence, camera/gallery, and PDF/print behavior.
+- Next resume step: Continue item 6 by reducing repeated invoice lookup code while preserving Android-friendly UI behavior.
+
+## 2026-05-29
+- What changed: Added the donor-style route planner locally in `Locations`: start address, route date filter, suggested active stops, manual add/remove/reorder, route summary, and Google Maps route handoff without adding a backend or API-key dependency. Upgraded invoice detail delivery/export flow with recipient editing, template preview, copy/open email actions, invoice preview, PDF export actions, and history entries for delivery/export activity.
+- Current state: `npm run lint` passes. `npm run test` passes with 14 tests. `npm run build` passes. Test/build needed elevated runs because Vite/Vitest could not write `node_modules/.vite-temp` in the sandbox.
+- Blockers: Manual Electron click-through remains open for real mail client behavior, desktop PDF export dialog behavior, external Google Maps handoff, restart persistence, and Android camera/gallery behavior.
+- Next resume step: Run the app in Electron and click through Locations route planning plus invoice email/preview/PDF export against real saved data.
+
+## 2026-05-29
+- What changed: Completed the requested architecture/test follow-up. Extracted reusable app data helpers from `App.tsx` into `src/appDataActions.ts` for selection resolution, inspection draft creation, inspection record creation, photo append, and stale damage-photo cleanup. Expanded smoke tests to cover damage material totals/suggestions, photo linking cleanup, invoice email templates, `Viewed`/`Cancelled` invoice statuses, material taxonomy normalization, and selection resolution.
+- Current state: `npm run lint` passes. `npm run test` passes with 14 tests. `npm run build` passes. Test/build needed an elevated run because Vite/Vitest could not write `node_modules/.vite-temp` in the sandbox.
+- Blockers: Manual Electron and Android runtime QA remain open.
+- Next resume step: Continue reducing repeated section-level lookup/action patterns or run the manual desktop QA checklist.
+
+---
+
+## 2026-05-27
+- What changed: Executed the root Markdown guidance by reading the app planning/status docs, running verification, and closing the secondary parity gaps listed in `SECONDARY-IMPORT-STATUS.md`. Added expanded damage taxonomy/severity/location presets, suggested damage material allocation, explicit photo-to-damage linking from Photos, material category normalization/editing, route queue modes, and invoice email templates plus `Viewed`/`Cancelled` invoice statuses.
+- Current state: `npm run lint`, `npm run test`, and `npm run build` pass. Browser verification loaded Damages, Photos, Locations, Invoices, and Settings in full view with no detected card/table overflow. The app remains local-first and does not import the donor backend architecture.
+- Blockers: Electron-only/manual checks remain open for real desktop restart persistence, automatic backup creation, PDF export click-through, scraper refresh behavior, and Android camera/gallery behavior.
+- Next resume step: Run the manual desktop Electron QA checklist from `NEXT-STEPS.md`, then fix runtime-only issues found there.
+
+---
+
 ## 2026-05-09
 - What changed: Added a `Locations` workspace route that maps customer/job/appointment addresses, shows an embedded map preview for the selected stop, lists active route stops, and opens Google Maps search or route directions without adding a backend/API dependency. Registered the route in desktop/mobile navigation and the workflow strip, and added small map/route helpers in `lib.ts`. Follow-up fix: Crew Mode now syncs the visible crew job into the app-level selected job before progress-photo capture so uploads attach to the displayed job/customer.
 - Current state: `npm run lint`, `npm run test`, and `npm run build` pass. The app remains local-first and uses existing customer, job, appointment, and crew records for location context.
@@ -64,3 +92,12 @@ Keep it short and current.
 - Current state: Recent RoofingCRM work appears to include desktop/Electron storage bridge updates, material pricing/scraper integration, Roof Math cost/pricing work, invoice/settings changes, and dashboard/customers/jobs/app shell styling updates. Build output was regenerated on 2026-03-27 around 10:14 PM.
 - Blockers: No exact end-of-day note exists for 2026-03-27 yet, so intent and unfinished items are partly inferred from file timestamps/code only.
 - Next resume step: Review the touched files from 2026-03-27, confirm intended features/unfinished work, then replace this inferred summary with a precise feature-by-feature note.
+
+## 2026-06-25
+- What changed: Worked through ACTION-LIST-25 items 6-23 in priority order. Memoized invoice and jobs section lookups into shared helpers (findCustomer/findJob/findEstimateForJob/findInvoiceForJob/findCrewById/findInvoiceById). Extracted Dashboard activity feed into uildDashboardActivity. Added task quick filters (all / blocked / due today / overdue) plus an empty-state message per filter. Added an estimate version history: new EstimateVersion type, stimateVersions on AppData, snapshotEstimateVersion helper, and a Saved versions list in the proposal preview. Added platform warning chips for missing desktop PDF/scraper bridges in Settings and Estimates. Added alidateAppDataImport and wired it into importBackup so failed JSON imports now surface the failing section. Added photo upload size and MIME validation. Added inspection photo/damage/linked-damage summary card, Crew Mode readiness checklist with seven pre-flight items, dashboard overdue invoice totals, and stale-age badges on material price rows.
+- Current state: 
+pm run lint passes with zero warnings, 
+pm run test passes (23 tests across invoice, roof math, estimate generation, storage normalization, app data actions, lead workflow, overdue status, estimate version snapshots, route URL building, invoice delivery history, and photo upload validation), 
+pm run build produces a clean Vite production bundle. Browser-only QA flags (Electron PDF export click-through, scraper behavior, real restart persistence, Android camera/gallery) remain the manual gate.
+- Blockers: None for the automated checks. Manual desktop and Android runs still require a real Electron / device environment.
+- Next resume step: Run the manual Electron click-through for export, scraper, backup, and restart persistence. Optionally add mobile-friendly responsive polish or extend the estimate version list with a 'Restore this version' action.

@@ -5,11 +5,12 @@ export type DamageType = 'Leak' | 'Shingle Damage' | 'Flashing' | 'Ventilation' 
 export type Urgency = 'Low' | 'Medium' | 'High' | 'Emergency'
 export type PhotoCategory = 'Before' | 'Damage' | 'Progress' | 'After'
 export type MaterialUnit = 'bundle' | 'roll' | 'piece' | 'lf' | 'sq'
+export type MaterialCategory = 'Shingles' | 'Underlayment' | 'Ice & Water' | 'Flashing' | 'Ventilation' | 'Ridge' | 'Edge Metal' | 'Decking' | 'Repair'
 export type CrewStatus = 'Active' | 'Inactive'
 export type AppointmentType = 'Estimate' | 'Inspection' | 'Consultation' | 'Job Start' | 'Follow-up' | 'Other'
 export type AppointmentStatus = 'Scheduled' | 'Completed' | 'Cancelled' | 'No Show'
 export type DamageCategory = 'Missing Shingles' | 'Flashing Damage' | 'Leaks' | 'Sagging' | 'Rot' | 'Moss/Algae' | 'Hail Damage' | 'Wind Damage' | 'Other'
-export type DamageSeverity = 'Minor' | 'Moderate' | 'Severe'
+export type DamageSeverity = 'Cosmetic' | 'Minor' | 'Moderate' | 'Functional' | 'Severe' | 'Structural'
 export type CompanyProfile = {
   name: string
   shortName: string
@@ -24,7 +25,7 @@ export type Customer = { id: string; name: string; phone: string; email: string;
 export type JobPriority = 'Low' | 'Normal' | 'High'
 export type Job = { id: string; customerId: string; title: string; status: JobStatus; priority: JobPriority; scheduledFor: string; notes: string; crewId?: string; createdAt: string }
 export type EstimateLineItem = { id: string; title: string; quantity: number; unit: string; unitPrice: number; total: number }
-export type MaterialPriceSetting = { id: string; label: string; unit: MaterialUnit; price: number; supplier: string; updatedAt: string }
+export type MaterialPriceSetting = { id: string; label: string; category: MaterialCategory; unit: MaterialUnit; price: number; supplier: string; updatedAt: string }
 export type MaterialPriceHistoryEntry = {
   id: string;
   materialId: string;
@@ -40,9 +41,31 @@ export type RoofPlane = { id: string; label: string; length: number; width: numb
 export type Estimate = {
   id: string; jobId: string; squareFeet: number; squares: number; materialCost: number; laborCost: number; totalPrice: number; overheadCost: number; profitMargin: number; taxRate: number; depositRequired: number; scopeOfWork: string; warranty: string; timeline: string; lineItems: EstimateLineItem[]
 }
-export type InvoiceStatus = 'Draft' | 'Sent' | 'Partial' | 'Paid' | 'Overdue'
+
+export type EstimateVersion = {
+  id: string
+  jobId: string
+  label: string
+  squareFeet: number
+  squares: number
+  materialCost: number
+  laborCost: number
+  totalPrice: number
+  overheadCost: number
+  profitMargin: number
+  taxRate: number
+  depositRequired: number
+  scopeOfWork: string
+  warranty: string
+  timeline: string
+  lineItems: EstimateLineItem[]
+  createdAt: string
+  createdBy?: string
+  notes?: string
+}
+export type InvoiceStatus = 'Draft' | 'Sent' | 'Viewed' | 'Partial' | 'Paid' | 'Overdue' | 'Cancelled'
 export type Invoice = { id: string; jobId: string; invoiceNumber: string; amount: number; paidAmount: number; balanceDue: number; status: InvoiceStatus; dueDate: string; issuedDate?: string; paidDate?: string; notes?: string }
-export type InvoiceHistoryAction = 'Created' | 'Status Changed' | 'Payment Recorded' | 'Reminder Sent' | 'Auto Marked Overdue' | 'Deleted'
+export type InvoiceHistoryAction = 'Created' | 'Status Changed' | 'Payment Recorded' | 'Email Prepared' | 'Reminder Sent' | 'Auto Marked Overdue' | 'Deleted'
 export type InvoiceHistoryEntry = {
   id: string;
   invoiceId: string;
@@ -145,6 +168,7 @@ export type AppData = {
   crews: Crew[];
   appointments: Appointment[];
   damages: DamageRecord[];
+  estimateVersions: EstimateVersion[];
   timeLogs: TimeLog[];
 }
 export type TimeEntry = {

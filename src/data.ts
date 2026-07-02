@@ -65,15 +65,15 @@ export const seedData: AppData & { tasks: ProjectTask[] } = {
   inspections: [{ id: 'insp-1', customerId: 'cust-1', roofType: 'Asphalt shingle', roofAge: '14 years', pitch: '6/12', stories: '2 storey', damageType: 'Shingle Damage', urgency: 'High', leakActive: false, deckingConcern: false, flashingConcern: true, ventilationConcern: true, insuranceClaim: false, summary: 'Rear slope showing granule loss, lifted tabs, and flashing wear around the chimney line.', recommendation: 'Proceed with full replacement quote, replace flashing details, and review attic ventilation during install.', measurements: { squares: 24, ridgeLength: 42, valleyLength: 18, eavesLength: 64, rakeLength: 40, wasteFactor: 10 }, roofPlanes: [{ id: 'plane-1', label: 'Front Main', length: 34, width: 14, pitch: '6/12', facet: 'Main slope' }, { id: 'plane-2', label: 'Rear Main', length: 34, width: 14, pitch: '6/12', facet: 'Main slope' }], photos: [], createdAt: new Date().toISOString() }],
   tasks: taskSeed,
   materialPrices: [
-    { id: 'mat-shingles', label: 'Architectural shingles', unit: 'bundle', price: 48, supplier: 'Manual', updatedAt: new Date().toISOString() },
-    { id: 'mat-starter', label: 'Starter strip', unit: 'bundle', price: 55, supplier: 'Manual', updatedAt: new Date().toISOString() },
-    { id: 'mat-ridge-cap', label: 'Ridge cap', unit: 'bundle', price: 65, supplier: 'Manual', updatedAt: new Date().toISOString() },
-    { id: 'mat-underlayment', label: 'Underlayment', unit: 'roll', price: 120, supplier: 'Manual', updatedAt: new Date().toISOString() },
-    { id: 'mat-ice-water', label: 'Ice & water shield', unit: 'roll', price: 95, supplier: 'Manual', updatedAt: new Date().toISOString() },
-    { id: 'mat-drip-edge', label: 'Drip edge', unit: 'piece', price: 18, supplier: 'Manual', updatedAt: new Date().toISOString() },
-    { id: 'mat-valley-metal', label: 'Valley metal', unit: 'piece', price: 32, supplier: 'Manual', updatedAt: new Date().toISOString() },
-    { id: 'mat-cap-vent', label: 'Cap vents', unit: 'piece', price: 45, supplier: 'Manual', updatedAt: new Date().toISOString() },
-    { id: 'mat-ridge-vent', label: 'Ridge vent', unit: 'lf', price: 7.25, supplier: 'Manual', updatedAt: new Date().toISOString() },
+    { id: 'mat-shingles', label: 'Architectural shingles', category: 'Shingles', unit: 'bundle', price: 48, supplier: 'Manual', updatedAt: new Date().toISOString() },
+    { id: 'mat-starter', label: 'Starter strip', category: 'Edge Metal', unit: 'bundle', price: 55, supplier: 'Manual', updatedAt: new Date().toISOString() },
+    { id: 'mat-ridge-cap', label: 'Ridge cap', category: 'Ridge', unit: 'bundle', price: 65, supplier: 'Manual', updatedAt: new Date().toISOString() },
+    { id: 'mat-underlayment', label: 'Underlayment', category: 'Underlayment', unit: 'roll', price: 120, supplier: 'Manual', updatedAt: new Date().toISOString() },
+    { id: 'mat-ice-water', label: 'Ice & water shield', category: 'Ice & Water', unit: 'roll', price: 95, supplier: 'Manual', updatedAt: new Date().toISOString() },
+    { id: 'mat-drip-edge', label: 'Drip edge', category: 'Edge Metal', unit: 'piece', price: 18, supplier: 'Manual', updatedAt: new Date().toISOString() },
+    { id: 'mat-valley-metal', label: 'Valley metal', category: 'Flashing', unit: 'piece', price: 32, supplier: 'Manual', updatedAt: new Date().toISOString() },
+    { id: 'mat-cap-vent', label: 'Cap vents', category: 'Ventilation', unit: 'piece', price: 45, supplier: 'Manual', updatedAt: new Date().toISOString() },
+    { id: 'mat-ridge-vent', label: 'Ridge vent', category: 'Ventilation', unit: 'lf', price: 7.25, supplier: 'Manual', updatedAt: new Date().toISOString() },
   ],
   materialPriceHistory: [],
   crews: [
@@ -138,6 +138,7 @@ export const seedData: AppData & { tasks: ProjectTask[] } = {
       updatedAt: new Date().toISOString(),
     },
   ],
+  estimateVersions: [],
   damages: [
     {
       id: 'damage-1',

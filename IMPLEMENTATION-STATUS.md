@@ -12,6 +12,7 @@ This file tracks the actual implementation state of features in `RoofingCRM`, ba
 - [x] **Crew Management**: Crew profiles and settings in `src/sections/Crews.tsx`
 - [x] **Calendar**: Appointment scheduling in `src/sections/Calendar.tsx`
 - [x] **Damage Tracking**: Category-based damage records in `src/sections/Damages.tsx`
+- [x] **Photo Documentation**: Customer/project photo gallery and explicit damage-photo linking in `src/sections/Photos.tsx`
 - [x] **Dashboard**: Overview of business metrics in `src/sections/Dashboard.tsx`
 - [x] **Company Settings**: Profile and material price settings in `src/sections/Settings.tsx`
 - [x] **Crew Mode**: Specialized view for field crews in `src/sections/CrewMode.tsx`
@@ -21,6 +22,7 @@ This file tracks the actual implementation state of features in `RoofingCRM`, ba
 - [x] **Local-First Storage**: `src/storage.ts` handles persistence.
 - [x] **Type System**: Strong typing for all entities in `src/types.ts`.
 - [x] **Material Pricing**: Material price settings and historical tracking implemented.
+- [x] **Material Taxonomy**: Local material categories and legacy import normalization implemented.
 - [ ] **PDF Export**: UI actions exist, but actual PDF generation needs verification.
 - [ ] **Backup/Restore**: logic in `storage.ts` needs verification.
 - [ ] **Scraper Integration**: Settings UI exists, but refresh behavior needs verification.
