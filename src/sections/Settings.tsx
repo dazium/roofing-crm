@@ -369,6 +369,12 @@ export const Settings: React.FC<SettingsProps> = ({
                   <strong>{storageMeta.backupDir}</strong>
                 </div>
               )}
+              {storageMeta.lastSaveAt && (
+                <div>
+                  <span>Last saved</span>
+                  <strong>{new Date(storageMeta.lastSaveAt).toLocaleString()}</strong>
+                </div>
+              )}
               {storageMeta.lastBackupAt && (
                 <div>
                   <span>Last automatic backup</span>
