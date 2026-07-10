@@ -174,19 +174,9 @@ export async function loadAppData(): Promise<StoredAppDataResult> {
 }
 
 export async function saveAppData(data: AppData): Promise<StorageDriver> {
-  const saveTimestamp = new Date().toISOString()
-  
   if (usesDesktopBridge()) {
     try {
       await window.roofingcrmDesktop!.saveData(JSON.stringify(data))
-      // Update last save time in storage meta
-      try {
-        const currentMeta = await window.roofingcrmDesktop!.getMeta()
-        await window.roofingcrmDesktop!.saveMeta({...currentMeta, lastSaveAt: saveTimestamp})
-      } catch (metaError) {
-        // If we can't update metadata, continue anyway
-        console.warn('Could not update storage metadata with save time:', metaError)
-      }
       return 'sqlite-native'
     } catch {
       saveToLocalStorage(data)
@@ -197,15 +187,6 @@ export async function saveAppData(data: AppData): Promise<StorageDriver> {
   if (usesSqlitePlatform()) {
     try {
       await saveToSqlite(data)
-      // For SQLite, we'll update the storage meta via desktop bridge if available
-      if (usesDesktopBridge()) {
-        try {
-          const currentMeta = await window.roofingcrmDesktop!.getMeta()
-          await window.roofingcrmDesktop!.saveMeta({...currentMeta, lastSaveAt: saveTimestamp})
-        } catch (metaError) {
-          console.warn('Could not update storage metadata with save time:', metaError)
-        }
-      }
       return 'sqlite-native'
     } catch {
       saveToLocalStorage(data)

@@ -70,7 +70,7 @@ export type DashboardActivityItem = {
   title: string
   detail: string
   meta: string
-  type: 'customer' | 'job' | 'inspection' | 'estimate' | 'invoice'
+  type: 'customer' | 'job' | 'inspection' | 'estimate' | 'invoice' | 'communication'
   when: string
   customerId?: string
   jobId?: string
@@ -149,7 +149,22 @@ export function buildDashboardActivity(data: AppData, limit = 8): DashboardActiv
     }
   })
 
-  return [...jobEvents, ...inspectionEvents, ...invoiceEvents, ...estimateEvents, ...customerEvents]
+  const communicationEvents: DashboardActivityItem[] = data.communications.map((entry) => {
+    const customer = findCustomer(data, entry.customerId)
+    const job = findJob(data, entry.jobId)
+    return {
+      id: `communication-${entry.id}`,
+      title: `${entry.type}: ${entry.subject}`,
+      detail: `${customer?.name ?? 'Unknown customer'}${job ? ` · ${job.title}` : ''}`,
+      meta: entry.message,
+      type: 'communication',
+      when: entry.createdAt,
+      customerId: entry.customerId,
+      jobId: entry.jobId,
+    }
+  })
+
+  return [...jobEvents, ...inspectionEvents, ...invoiceEvents, ...estimateEvents, ...communicationEvents, ...customerEvents]
     .sort((a, b) => b.when.localeCompare(a.when))
     .slice(0, limit)
 }

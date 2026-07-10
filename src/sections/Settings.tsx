@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import type { StorageMeta, StorageDriver, MaterialPrice } from '../storage';
-import type { AppData, CompanyProfile, MaterialPriceHistoryEntry, MaterialPriceSetting } from '../types';
+import type { AppData, CompanyProfile, MaterialPriceHistoryEntry, MaterialPriceSetting, Customer, LeadStatus } from '../types';
 import { MATERIAL_CATEGORIES, companyDisplayName, companyShortName, companyTagline, hasDesktopBridge, openEmailClient, openExternalUrl, openPhoneDialer, uid } from '../lib';
 
 interface SettingsProps {
@@ -24,10 +24,11 @@ export const Settings: React.FC<SettingsProps> = ({
   storageMeta,
   exportBackup,
   importInputRef,
-  handleImport
+  handleImport,
 }) => {
   const [scraperMessage, setScraperMessage] = useState('');
   const [isScrapingPrices, setIsScrapingPrices] = useState(false);
+  const importCustomersInputRef = useRef<HTMLInputElement | null>(null);
   const desktopBridgeAvailable = hasDesktopBridge();
 
   function materialSourceLabel(item: MaterialPriceSetting) {
@@ -106,6 +107,165 @@ export const Settings: React.FC<SettingsProps> = ({
   const recentPriceHistory = [...data.materialPriceHistory]
     .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt))
     .slice(0, 16);
+
+  function handleImportCustomers(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const lines = text.split('\n').filter(line => line.trim());
+        
+        if (lines.length === 0) {
+          throw new Error('Empty CSV file');
+        }
+
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+        const expectedHeaders = ['ID', 'Name', 'Phone', 'Email', 'Address', 'Lead Status', 'Source', 'Notes'];
+        
+        if (!headers.every((h, i) => h === expectedHeaders[i])) {
+          throw new Error('Invalid CSV format. Expected headers: ' + expectedHeaders.join(', '));
+        }
+
+        const customers: Customer[] = [];
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+          if (values.length >= expectedHeaders.length) {
+            customers.push({
+              id: values[0] || uid(),
+              name: values[1] || '',
+              phone: values[2] || '',
+              email: values[3] || '',
+              address: values[4] || '',
+              leadStatus: values[5] as LeadStatus || 'New Lead',
+              source: values[6] || '',
+              notes: values[7] || ''
+            });
+          }
+        }
+
+        if (customers.length > 0) {
+          setData(prev => ({
+            ...prev,
+            customers: [...prev.customers, ...customers]
+          }));
+          alert(`Successfully imported ${customers.length} customers`);
+        }
+        
+        event.target.value = '';
+      } catch (error) {
+        alert(`Failed to import customers: ${error instanceof Error ? error.message : 'Unknown CSV error'}`);
+        event.target.value = '';
+      }
+    };
+    reader.onerror = () => {
+      alert('Failed to read file');
+      event.target.value = '';
+    };
+    reader.readAsText(file);
+  }
+
+  function exportCustomersCSV() {
+    const headers = ['ID', 'Name', 'Phone', 'Email', 'Address', 'Lead Status', 'Source', 'Notes'];
+    const rows = data.customers.map(customer => [
+      customer.id,
+      customer.name,
+      customer.phone,
+      customer.email,
+      customer.address,
+      customer.leadStatus,
+      customer.source,
+      customer.notes
+    ]);
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => 
+        row.map(field => 
+          `"${String(field).replace(/"/g, '""')}"`
+        ).join(',')
+      )
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `roofingcrm-customers-${new Date().toISOString().slice(0,10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function exportJobsCSV() {
+    const headers = ['ID', 'Customer ID', 'Title', 'Status', 'Priority', 'Scheduled For', 'Notes', 'Crew ID', 'Created At'];
+    const rows = data.jobs.map(job => [
+      job.id,
+      job.customerId,
+      job.title,
+      job.status,
+      job.priority,
+      job.scheduledFor || '',
+      job.notes,
+      job.crewId || '',
+      job.createdAt
+    ]);
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => 
+        row.map(field => 
+          `"${String(field).replace(/"/g, '""')}"`
+        ).join(',')
+      )
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `roofingcrm-jobs-${new Date().toISOString().slice(0,10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function exportInvoicesCSV() {
+    const headers = ['ID', 'Job ID', 'Invoice Number', 'Amount', 'Paid Amount', 'Balance Due', 'Status', 'Due Date', 'Issued Date', 'Paid Date', 'Notes'];
+    const rows = data.invoices.map(invoice => [
+      invoice.id,
+      invoice.jobId,
+      invoice.invoiceNumber,
+      invoice.amount,
+      invoice.paidAmount,
+      invoice.balanceDue,
+      invoice.status,
+      invoice.dueDate,
+      invoice.issuedDate || '',
+      invoice.paidDate || '',
+      invoice.notes
+    ]);
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => 
+        row.map(field => 
+          `"${String(field).replace(/"/g, '""')}"`
+        ).join(',')
+      )
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `roofingcrm-invoices-${new Date().toISOString().slice(0,10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 
   async function syncScrapedPrices() {
     if (!window.roofingcrmDesktop?.runMaterialScraper || !window.roofingcrmDesktop?.getLatestMaterialPrices) {
@@ -389,11 +549,35 @@ export const Settings: React.FC<SettingsProps> = ({
               )}
             </div>
             <div className="settings-actions">
-              <button className="ghost" onClick={exportBackup}>Export backup</button>
-              <button className="ghost" onClick={() => importInputRef.current?.click()}>
-                Import backup
-              </button>
+              <div className="button-group">
+                <button className="ghost" onClick={exportBackup}>Export full backup</button>
+                <button className="ghost" onClick={exportCustomersCSV}>Export customers (CSV)</button>
+                <button className="ghost" onClick={exportJobsCSV}>Export jobs (CSV)</button>
+                <button className="ghost" onClick={exportInvoicesCSV}>Export invoices (CSV)</button>
+              </div>
+              <div className="button-group">
+                <button className="ghost" onClick={() => importInputRef.current?.click()}>
+                  Import backup
+                </button>
+                <button className="ghost" onClick={() => importCustomersInputRef.current?.click()}>
+                  Import customers (CSV)
+                </button>
+              </div>
             </div>
+            <input 
+              ref={importInputRef} 
+              className="hidden-input" 
+              type="file" 
+              accept="application/json" 
+              onChange={handleImport} 
+            />
+            <input 
+              ref={importCustomersInputRef} 
+              className="hidden-input" 
+              type="file" 
+              accept="text/csv" 
+              onChange={handleImportCustomers} 
+            />
             <input 
               ref={importInputRef} 
               className="hidden-input" 

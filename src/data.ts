@@ -138,6 +138,40 @@ export const seedData: AppData & { tasks: ProjectTask[] } = {
       updatedAt: new Date().toISOString(),
     },
   ],
+  communications: [
+    {
+      id: 'comm-1',
+      customerId: 'cust-1',
+      jobId: 'job-1',
+      type: 'Call',
+      subject: 'Confirmed replacement color',
+      message: 'Homeowner confirmed the selected shingle color and asked to keep chimney flashing in the scope.',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'comm-2',
+      customerId: 'cust-2',
+      jobId: 'job-2',
+      type: 'Text',
+      subject: 'Appointment reminder',
+      message: 'Sent reminder text for the repair visit and asked to clear driveway access near the vent stack.',
+      createdAt: new Date().toISOString(),
+    },
+  ],
+  attachments: [
+    {
+      id: 'att-1',
+      customerId: 'cust-1',
+      jobId: 'job-1',
+      type: 'Contract',
+      name: 'Replacement contract',
+      fileName: 'jennifer-contract.pdf',
+      mimeType: 'application/pdf',
+      sizeBytes: 84211,
+      dataUrl: 'data:application/pdf;base64,',
+      createdAt: new Date().toISOString(),
+    },
+  ],
   estimateVersions: [],
   damages: [
     {

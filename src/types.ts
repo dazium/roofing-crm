@@ -1,6 +1,6 @@
 export type LeadStatus = 'New Lead' | 'Contacted' | 'Inspection Scheduled' | 'Estimate Sent' | 'Won' | 'Lost'
 export type JobStatus = 'Scheduled' | 'In Progress' | 'Awaiting Final Review' | 'Complete' | 'Invoiced' | 'Paid'
-export type View = 'dashboard' | 'customers' | 'inspect' | 'jobs' | 'photos' | 'damages' | 'estimates' | 'invoices' | 'tasks' | 'calendar' | 'locations' | 'crews' | 'crew-mode' | 'settings'
+export type View = 'dashboard' | 'customers' | 'inspect' | 'jobs' | 'photos' | 'damages' | 'estimates' | 'invoices' | 'tasks' | 'calendar' | 'locations' | 'crews' | 'crew-mode' | 'settings' | 'reports'
 export type DamageType = 'Leak' | 'Shingle Damage' | 'Flashing' | 'Ventilation' | 'Animal Damage' | 'Storm Damage'
 export type Urgency = 'Low' | 'Medium' | 'High' | 'Emergency'
 export type PhotoCategory = 'Before' | 'Damage' | 'Progress' | 'After'
@@ -77,6 +77,29 @@ export type InvoiceHistoryEntry = {
 }
 export type InspectionPhoto = { id: string; label: string; category: PhotoCategory; dataUrl: string; sizeBytes?: number; width?: number; height?: number }
 export type Measurements = { squares: number; ridgeLength: number; valleyLength: number; eavesLength: number; rakeLength: number; wasteFactor: number }
+export type CommunicationType = 'Call' | 'Text' | 'Email' | 'Site Visit' | 'Note'
+export type CommunicationEntry = {
+  id: string
+  customerId: string
+  jobId?: string
+  type: CommunicationType
+  subject: string
+  message: string
+  createdAt: string
+}
+export type AttachmentType = 'Contract' | 'Warranty' | 'Permit' | 'Receipt' | 'Photo' | 'Other'
+export type AttachmentEntry = {
+  id: string
+  customerId: string
+  jobId?: string
+  type: AttachmentType
+  name: string
+  fileName: string
+  mimeType: string
+  sizeBytes: number
+  dataUrl: string
+  createdAt: string
+}
 export type Inspection = {
   id: string; customerId: string; roofType: string; roofAge: string; pitch: string; stories: string; damageType: DamageType; urgency: Urgency; leakActive: boolean; deckingConcern: boolean; flashingConcern: boolean; ventilationConcern: boolean; insuranceClaim: boolean; summary: string; recommendation: string; measurements: Measurements; roofPlanes: RoofPlane[]; photos: InspectionPhoto[]; createdAt: string
 }
@@ -166,7 +189,10 @@ export type AppData = {
   materialPriceHistory: MaterialPriceHistoryEntry[];
   tasks: ProjectTask[];
   crews: Crew[];
+  crewMembers?: CrewMember[];
   appointments: Appointment[];
+  communications: CommunicationEntry[];
+  attachments: AttachmentEntry[];
   damages: DamageRecord[];
   estimateVersions: EstimateVersion[];
   timeLogs: TimeLog[];

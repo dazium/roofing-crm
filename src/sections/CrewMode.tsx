@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { AppData } from '../types';
+import type { AppData, PhotoCategory, View } from '../types';
 import { openAddressInMaps, openEmailClient, openPhoneDialer } from '../lib';
 import { TimeTracking } from '../components/TimeTracking';
 
@@ -9,8 +9,8 @@ interface CrewModeProps {
   data: AppData;
   selectedJobId: string | null;
   selectJob: (jobId: string | null, nextData?: AppData) => void;
-  setView: React.Dispatch<React.SetStateAction<import('../types').View>>;
-  setPhotoCategory: React.Dispatch<React.SetStateAction<import('../types').PhotoCategory>>;
+  setView: React.Dispatch<React.SetStateAction<View>>;
+  setPhotoCategory: React.Dispatch<React.SetStateAction<PhotoCategory>>;
   setPhotoLabel: React.Dispatch<React.SetStateAction<string>>;
   cameraInputRef: React.RefObject<HTMLInputElement | null>;
   handlePhotoUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -32,14 +32,26 @@ function buildCrewReadiness(selectedJobId: string | null, customerId: string | n
   ];
 }
 
-export const CrewMode: React.FC<CrewModeProps> = ({ data, selectedJobId, cameraInputRef, onDataUpdate }) => {
+export const CrewMode: React.FC<CrewModeProps> = ({
+  data,
+  selectedJobId,
+  selectJob,
+  setView,
+  setPhotoCategory,
+  setPhotoLabel,
+  cameraInputRef,
+  handlePhotoUpload,
+  onDataUpdate
+}) => {
   const customer = data.customers.find((entry) => entry.id === data.jobs.find((job) => job.id === selectedJobId)?.customerId) ?? null;
   const selectedJob = data.jobs.find((job) => job.id === selectedJobId) ?? null;
   const nextJob = selectedJob ?? data.jobs[0] ?? null;
   const readinessItems = useMemo(() => buildCrewReadiness(selectedJobId, nextJob?.customerId ?? null, data), [data, selectedJobId, nextJob?.customerId]);
   const selectedCrew = selectedJob?.crewId ? data.crews.find((entry) => entry.id === selectedJob?.crewId) ?? null : null;
+  const assignedJobs = selectedCrew ? data.jobs.filter((job) => job.crewId === selectedCrew.id) : [];
   const jobTasks = data.tasks.filter((task) => task.jobId === selectedJobId);
   const jobDamages = data.damages.filter((damage) => damage.jobId === selectedJobId);
+  const jobAttachments = data.attachments.filter((attachment) => attachment.jobId === selectedJobId);
   const jobPhotos = data.inspections.find((inspection) => inspection.customerId === nextJob?.customerId)?.photos ?? [];
 
   function captureProgressPhoto() {
@@ -55,7 +67,19 @@ export const CrewMode: React.FC<CrewModeProps> = ({ data, selectedJobId, cameraI
               <h3>Active job</h3>
               <span>Crew Mode focuses on the job currently in the field</span>
             </div>
+            <button className="ghost" onClick={() => setView('jobs')}>Open job record</button>
           </div>
+          {assignedJobs.length ? (
+            <label className="field field-compact">
+              <span>Assigned job</span>
+              <select value={selectedJobId ?? ''} onChange={(event) => selectJob(event.target.value || null)}>
+                <option value="">Select a job</option>
+                {assignedJobs.map((job) => (
+                  <option key={job.id} value={job.id}>{job.title}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <div className="detail-stack">
             <div><span>Project</span><strong>{nextJob ? nextJob.title : 'No jobs assigned yet'}</strong></div>
             <div><span>Crew</span><strong>{selectedCrew?.name ?? 'Unassigned'}</strong></div>
@@ -74,7 +98,7 @@ export const CrewMode: React.FC<CrewModeProps> = ({ data, selectedJobId, cameraI
             <button className="ghost" onClick={() => customer?.phone && openPhoneDialer(customer.phone)} disabled={!customer?.phone}>Call customer</button>
             <button className="ghost" onClick={() => customer?.email && openEmailClient(customer.email)} disabled={!customer?.email}>Email customer</button>
             <button className="ghost" onClick={() => customer?.address && openAddressInMaps(customer.address)} disabled={!customer?.address}>Open map</button>
-            <button onClick={captureProgressPhoto} disabled={!selectedJob || !customer}>Progress photo</button>
+            <button onClick={captureProgressPhoto} disabled={!selectedJob || !customer}>Camera</button>
           </div>
         </div>
 
@@ -106,7 +130,42 @@ export const CrewMode: React.FC<CrewModeProps> = ({ data, selectedJobId, cameraI
             <div><span>Tasks</span><strong>{jobTasks.length}</strong></div>
             <div><span>Damages</span><strong>{jobDamages.length}</strong></div>
             <div><span>Photos</span><strong>{jobPhotos.length}</strong></div>
+            <div><span>Attachments</span><strong>{jobAttachments.length}</strong></div>
           </div>
+        </div>
+
+        <div className="card workspace-focus-card">
+          <div className="section-head">
+            <h3>Photo capture</h3>
+            <span>Progress photos and field notes</span>
+          </div>
+          <div className="form-grid compact-grid">
+            <label className="field field-compact">
+              <span>Category</span>
+              <select onChange={(event) => setPhotoCategory(event.target.value as PhotoCategory)} defaultValue="Damage">
+                <option value="Before">Before</option>
+                <option value="Damage">Damage</option>
+                <option value="Progress">Progress</option>
+                <option value="After">After</option>
+              </select>
+            </label>
+            <label className="field">
+              <span>Label</span>
+              <input placeholder="Front slope, flashing, cleanup..." onChange={(event) => setPhotoLabel(event.target.value)} />
+            </label>
+          </div>
+          <div className="hero-actions">
+            <button onClick={captureProgressPhoto} disabled={!selectedJob || !customer}>Take photo</button>
+            <button className="ghost" onClick={() => cameraInputRef.current?.click()} disabled={!selectedJob || !customer}>Upload photo</button>
+          </div>
+          <input
+            ref={cameraInputRef}
+            className="hidden-input"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handlePhotoUpload}
+          />
         </div>
 
         {selectedCrew ? (

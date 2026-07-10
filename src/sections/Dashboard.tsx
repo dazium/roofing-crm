@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { AppData, View } from '../types';
-import { money, openAddressInMaps, openEmailClient, openPhoneDialer } from '../lib';
+import type { AppData, LeadStatus, View } from '../types';
+import { LEAD_STATUS_FLOW, money, openAddressInMaps, openEmailClient, openPhoneDialer } from '../lib';
 import { buildDashboardActivity, type DashboardActivityItem } from '../appLookups';
 import { fetchJobWeather, type JobWeatherSnapshot } from '../weather';
 
@@ -133,6 +133,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
   );
 
   const recentActivity = useMemo<DashboardActivityItem[]>(() => buildDashboardActivity(data, 8), [data]);
+  const leadPipeline = useMemo(
+    () => LEAD_STATUS_FLOW.map((status: LeadStatus) => ({
+      status,
+      customers: data.customers.filter((customer) => customer.leadStatus === status),
+    })),
+    [data.customers]
+  );
+  const dueFollowUps = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return data.tasks
+      .filter((task) => task.status !== 'Done' && (!task.dueDate || task.dueDate <= today))
+      .sort((a, b) => (a.dueDate || '9999-12-31').localeCompare(b.dueDate || '9999-12-31'))
+      .slice(0, 5);
+  }, [data.tasks]);
 
   const nextAction = useMemo(() => {
     if (!selectedCustomer) {
@@ -419,6 +433,43 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <strong>{dashboard.openDamages}</strong>
           <small>Tracked damage entries</small>
         </button>
+      </section>
+
+      <section className="content-grid two-col dashboard-detail-grid">
+        <div className="card">
+          <div className="section-head">
+            <h3>Lead pipeline</h3>
+            <span>Where every customer sits in the sales flow</span>
+          </div>
+          <div className="pipeline-grid">
+            {leadPipeline.map((stage) => (
+              <button key={stage.status} className="pipeline-card" onClick={() => setView('customers')}>
+                <span>{stage.status}</span>
+                <strong>{stage.customers.length}</strong>
+                <small>{stage.customers[0]?.name ?? 'No leads'}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="section-head">
+            <h3>Due follow-ups</h3>
+            <span>Calls, reminders, and next actions that should not slip</span>
+          </div>
+          <div className="linked-record-list">
+            {dueFollowUps.length ? dueFollowUps.map((task) => {
+              const customer = data.customers.find((entry) => entry.id === task.customerId);
+              return (
+                <button key={task.id} className="linked-record-row linked-record-action" onClick={onOpenTasks}>
+                  <strong>{task.title}</strong>
+                  <span>{customer?.name ?? 'Unknown customer'} · {task.priority} · {task.status}</span>
+                  <small>{task.dueDate ? `Due ${task.dueDate}` : 'No due date'}</small>
+                </button>
+              );
+            }) : <div className="empty">No overdue or due-today follow-ups.</div>}
+          </div>
+        </div>
       </section>
 
       <div className="hero-actions">

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import type { AppData, Customer, Job, LeadStatus, View } from '../types';
+import type { AppData, AttachmentType, CommunicationType, Customer, Job, LeadStatus, View } from '../types';
 import { LEAD_STATUS_FLOW, allowedLeadStatusTransitions, badgeTone, canTransitionLeadStatus, openAddressInMaps, openEmailClient, openPhoneDialer, recommendedLeadStatus, uid, validateLeadWorkflowStatus } from '../lib';
 
 interface CustomerForm {
@@ -10,6 +10,17 @@ interface CustomerForm {
   notes: string;
   leadStatus: LeadStatus;
   source: string;
+}
+
+interface CommunicationForm {
+  type: CommunicationType;
+  subject: string;
+  message: string;
+}
+
+interface AttachmentForm {
+  type: AttachmentType;
+  name: string;
 }
 
 interface CustomersProps {
@@ -54,6 +65,16 @@ export const Customers: React.FC<CustomersProps> = ({
     leadStatus: 'New Lead',
     source: 'Facebook'
   });
+  const [communicationForm, setCommunicationForm] = useState<CommunicationForm>({
+    type: 'Call',
+    subject: '',
+    message: ''
+  });
+  const [attachmentForm, setAttachmentForm] = useState<AttachmentForm>({
+    type: 'Contract',
+    name: ''
+  });
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
 
   const filteredCustomers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -77,6 +98,8 @@ export const Customers: React.FC<CustomersProps> = ({
   const customerJobIds = customerJobs.map((job) => job.id);
   const customerEstimates = data.estimates.filter((estimate) => customerJobIds.includes(estimate.jobId));
   const customerInvoices = data.invoices.filter((invoice) => customerJobIds.includes(invoice.jobId));
+  const customerCommunications = data.communications.filter((entry) => entry.customerId === selectedCustomerId);
+  const customerAttachments = data.attachments.filter((entry) => entry.customerId === selectedCustomerId);
   const openJobs = customerJobs.filter((job) => !['Complete', 'Paid'].includes(job.status));
   const unpaidInvoices = customerInvoices.filter((invoice) => invoice.status !== 'Paid');
   const leadWorkflowContext = {
@@ -91,6 +114,48 @@ export const Customers: React.FC<CustomersProps> = ({
   const editableLeadOptions = selectedCustomer ? allowedLeadStatusTransitions(selectedCustomer.leadStatus) : LEAD_STATUS_FLOW;
   const canConvertLeadToJob = Boolean(selectedCustomer && customerJobs.length === 0 && selectedCustomer.leadStatus !== 'Lost');
   const latestJob = customerJobs[0] ?? null;
+  const customerTimeline = useMemo(() => {
+    if (!selectedCustomerId) return [];
+
+    const inspectionEvents = customerInspections.map((inspection) => ({
+      id: `inspection-${inspection.id}`,
+      type: 'Inspection',
+      title: inspection.damageType,
+      detail: inspection.summary || 'Inspection saved',
+      meta: inspection.createdAt,
+    }));
+    const jobEvents = customerJobs.map((job) => ({
+      id: `job-${job.id}`,
+      type: 'Project',
+      title: job.title,
+      detail: `${job.status} · ${job.priority} priority`,
+      meta: job.createdAt,
+    }));
+    const estimateEvents = customerEstimates.map((estimate) => ({
+      id: `estimate-${estimate.id}`,
+      type: 'Estimate',
+      title: `$${estimate.totalPrice.toLocaleString()}`,
+      detail: `${estimate.lineItems.length} line items`,
+      meta: customerJobs.find((job) => job.id === estimate.jobId)?.createdAt ?? new Date().toISOString(),
+    }));
+    const invoiceEvents = customerInvoices.map((invoice) => ({
+      id: `invoice-${invoice.id}`,
+      type: 'Invoice',
+      title: invoice.invoiceNumber,
+      detail: `${invoice.status} · $${invoice.balanceDue.toLocaleString()} balance`,
+      meta: invoice.issuedDate ?? invoice.dueDate,
+    }));
+    const communicationEvents = customerCommunications.map((entry) => ({
+      id: `comm-${entry.id}`,
+      type: 'Communication',
+      title: `${entry.type}: ${entry.subject}`,
+      detail: entry.message,
+      meta: entry.createdAt,
+    }));
+
+    return [...communicationEvents, ...invoiceEvents, ...estimateEvents, ...jobEvents, ...inspectionEvents]
+      .sort((a, b) => b.meta.localeCompare(a.meta));
+  }, [customerCommunications, customerEstimates, customerInspections, customerInvoices, customerJobs, selectedCustomerId]);
 
   function convertLeadToJob() {
     if (!selectedCustomer) return;
@@ -123,6 +188,49 @@ export const Customers: React.FC<CustomersProps> = ({
     }
 
     selectCustomer(customerId);
+  }
+
+  function addCommunication() {
+    if (!selectedCustomer) return;
+    if (!communicationForm.subject.trim() && !communicationForm.message.trim()) return;
+
+    const nextCommunication = {
+      id: uid(),
+      customerId: selectedCustomer.id,
+      jobId: latestJob?.id,
+      type: communicationForm.type,
+      subject: communicationForm.subject.trim() || communicationForm.type,
+      message: communicationForm.message.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    setData((prev) => ({ ...prev, communications: [nextCommunication, ...prev.communications] }));
+    setCommunicationForm({ type: 'Call', subject: '', message: '' });
+  }
+
+  async function addAttachment() {
+    if (!selectedCustomer || !attachmentFile) return;
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ''));
+      reader.onerror = () => reject(reader.error ?? new Error('Failed to read file'));
+      reader.readAsDataURL(attachmentFile);
+    });
+
+    const nextAttachment = {
+      id: uid(),
+      customerId: selectedCustomer.id,
+      jobId: latestJob?.id,
+      type: attachmentForm.type,
+      name: attachmentForm.name.trim() || attachmentFile.name,
+      fileName: attachmentFile.name,
+      mimeType: attachmentFile.type || 'application/octet-stream',
+      sizeBytes: attachmentFile.size,
+      dataUrl,
+      createdAt: new Date().toISOString(),
+    };
+    setData((prev) => ({ ...prev, attachments: [nextAttachment, ...prev.attachments] }));
+    setAttachmentForm({ type: 'Contract', name: '' });
+    setAttachmentFile(null);
   }
 
   function addCustomer() {
@@ -161,6 +269,8 @@ export const Customers: React.FC<CustomersProps> = ({
       inspections: data.inspections.filter((inspection) => inspection.customerId !== customerId),
       estimates: data.estimates.filter((estimate) => !jobIds.includes(estimate.jobId)),
       invoices: data.invoices.filter((invoice) => !jobIds.includes(invoice.jobId)),
+      communications: data.communications.filter((entry) => entry.customerId !== customerId),
+      attachments: data.attachments.filter((entry) => entry.customerId !== customerId),
     };
     setData(nextData);
     selectCustomer(selectedCustomerId === customerId ? null : selectedCustomerId);
@@ -418,6 +528,63 @@ export const Customers: React.FC<CustomersProps> = ({
                   {selectedCustomer.notes || 'No notes yet.'}
                 </div>
               </div>
+
+              <div className="summary-box project-summary-box">
+                <div className="section-subhead">
+                  <h4>Communication log</h4>
+                  <span>Calls, texts, emails</span>
+                </div>
+                <div className="form-grid compact-grid">
+                  <label className="field field-compact">
+                    <span>Type</span>
+                    <select value={communicationForm.type} onChange={(event) => setCommunicationForm({ ...communicationForm, type: event.target.value as CommunicationType })}>
+                      <option value="Call">Call</option>
+                      <option value="Text">Text</option>
+                      <option value="Email">Email</option>
+                      <option value="Site Visit">Site Visit</option>
+                      <option value="Note">Note</option>
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span>Subject</span>
+                    <input value={communicationForm.subject} onChange={(event) => setCommunicationForm({ ...communicationForm, subject: event.target.value })} placeholder="Reminder, confirmation, follow-up..." />
+                  </label>
+                  <label className="field compact-textarea">
+                    <span>Message</span>
+                    <textarea value={communicationForm.message} onChange={(event) => setCommunicationForm({ ...communicationForm, message: event.target.value })} placeholder="What was said or agreed..." />
+                  </label>
+                  <button onClick={addCommunication}>Log communication</button>
+                </div>
+              </div>
+
+              <div className="summary-box project-summary-box">
+                <div className="section-subhead">
+                  <h4>Attachments</h4>
+                  <span>Contracts, warranties, permits</span>
+                </div>
+                <div className="form-grid compact-grid">
+                  <label className="field field-compact">
+                    <span>Type</span>
+                    <select value={attachmentForm.type} onChange={(event) => setAttachmentForm({ ...attachmentForm, type: event.target.value as AttachmentType })}>
+                      <option value="Contract">Contract</option>
+                      <option value="Warranty">Warranty</option>
+                      <option value="Permit">Permit</option>
+                      <option value="Receipt">Receipt</option>
+                      <option value="Photo">Photo</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span>Name</span>
+                    <input value={attachmentForm.name} onChange={(event) => setAttachmentForm({ ...attachmentForm, name: event.target.value })} placeholder="Signed contract, permit, warranty..." />
+                  </label>
+                  <label className="field">
+                    <span>File</span>
+                    <input type="file" onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)} />
+                  </label>
+                  <button onClick={() => void addAttachment()} disabled={!attachmentFile}>Add attachment</button>
+                </div>
+              </div>
             </div>}
 
             {canConvertLeadToJob && (
@@ -451,6 +618,61 @@ export const Customers: React.FC<CustomersProps> = ({
                   )) : <div className="empty">No jobs linked yet.</div>}
                 </div>
               </div>
+
+              <div className="summary-box project-summary-box span-2">
+                <div className="section-subhead">
+                  <h4>Customer timeline</h4>
+                  <span>{customerTimeline.length} tracked items</span>
+                </div>
+                <div className="timeline-list">
+                  {customerTimeline.length ? customerTimeline.map((item) => (
+                    <div key={item.id} className="timeline-item">
+                      <div className="timeline-dot" />
+                      <div className="timeline-content">
+                        <strong>{item.type}: {item.title}</strong>
+                        <span>{item.detail}</span>
+                        <small>{new Date(item.meta).toLocaleString()}</small>
+                      </div>
+                    </div>
+                  )) : <div className="empty">No customer activity yet.</div>}
+                </div>
+              </div>
+
+              {customerCommunications.length ? (
+                <div className="summary-box project-summary-box span-2">
+                  <div className="section-subhead">
+                    <h4>Communication history</h4>
+                    <span>Most recent notes first</span>
+                  </div>
+                  <div className="linked-record-list">
+                    {customerCommunications.map((entry) => (
+                      <div key={entry.id} className="linked-record-row">
+                        <strong>{entry.type}: {entry.subject}</strong>
+                        <span>{entry.message}</span>
+                        <small>{new Date(entry.createdAt).toLocaleString()}</small>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {customerAttachments.length ? (
+                <div className="summary-box project-summary-box span-2">
+                  <div className="section-subhead">
+                    <h4>Attachment history</h4>
+                    <span>Stored files</span>
+                  </div>
+                  <div className="linked-record-list">
+                    {customerAttachments.map((entry) => (
+                      <div key={entry.id} className="linked-record-row">
+                        <strong>{entry.type}: {entry.name}</strong>
+                        <span>{entry.fileName} · {Math.round(entry.sizeBytes / 1024)} KB</span>
+                        <small>{new Date(entry.createdAt).toLocaleString()}</small>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
 
               <div className="summary-box project-summary-box">
                 <div className="section-subhead">

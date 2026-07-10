@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { AppData, JobStatus, JobPriority, Job, View } from '../types';
+import type { AppData, AttachmentType, JobStatus, JobPriority, Job, View } from '../types';
 import { badgeTone, money, openAddressInMaps, openEmailClient, openPhoneDialer, uid } from '../lib';
 import { fetchJobWeather, type JobWeatherSnapshot } from '../weather';
 import { findCustomer, findCrewById, findEstimateForJob, findInspectionForCustomer, findInvoiceForJob, findJob } from '../appLookups';
@@ -11,6 +11,11 @@ interface JobForm {
   scheduledFor: string;
   crewId: string;
   notes: string;
+}
+
+interface AttachmentForm {
+  type: AttachmentType;
+  name: string;
 }
 
 interface JobsProps {
@@ -58,6 +63,8 @@ export const Jobs: React.FC<JobsProps> = ({
   const [weather, setWeather] = useState<JobWeatherSnapshot | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState<string | null>(null);
+  const [attachmentForm, setAttachmentForm] = useState<AttachmentForm>({ type: 'Contract', name: '' });
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
 
   const customerJobs = useMemo(
     () => data.jobs.filter((job) => job.customerId === selectedCustomerId),
@@ -83,6 +90,7 @@ export const Jobs: React.FC<JobsProps> = ({
   const selectedEstimate = useMemo(() => findEstimateForJob(data, selectedJobId), [data, selectedJobId]);
   const selectedInvoice = useMemo(() => findInvoiceForJob(data, selectedJobId), [data, selectedJobId]);
   const selectedInspection = useMemo(() => findInspectionForCustomer(data, selectedJobCustomer?.id), [data, selectedJobCustomer?.id]);
+  const selectedAttachments = useMemo(() => data.attachments.filter((entry) => entry.jobId === selectedJobId), [data.attachments, selectedJobId]);
   const activeJobs = data.jobs.filter((job) => job.status !== 'Complete' && job.status !== 'Paid');
   const highPriorityJobs = data.jobs.filter((job) => job.priority === 'High');
 
@@ -146,6 +154,31 @@ export const Jobs: React.FC<JobsProps> = ({
     setJobForm({ title: '', status: 'Scheduled', priority: 'Normal', scheduledFor: '', crewId: '', notes: '' });
   }
 
+  async function addAttachment() {
+    if (!selectedJobCustomer || !selectedJobId || !attachmentFile) return;
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ''));
+      reader.onerror = () => reject(reader.error ?? new Error('Failed to read file'));
+      reader.readAsDataURL(attachmentFile);
+    });
+    const nextAttachment = {
+      id: uid(),
+      customerId: selectedJobCustomer.id,
+      jobId: selectedJobId,
+      type: attachmentForm.type,
+      name: attachmentForm.name.trim() || attachmentFile.name,
+      fileName: attachmentFile.name,
+      mimeType: attachmentFile.type || 'application/octet-stream',
+      sizeBytes: attachmentFile.size,
+      dataUrl,
+      createdAt: new Date().toISOString(),
+    };
+    setData((prev) => ({ ...prev, attachments: [nextAttachment, ...prev.attachments] }));
+    setAttachmentForm({ type: 'Contract', name: '' });
+    setAttachmentFile(null);
+  }
+
   function removeJob(jobId: string) {
     const job = data.jobs.find((entry) => entry.id === jobId);
     const confirmed = window.confirm(
@@ -159,6 +192,7 @@ export const Jobs: React.FC<JobsProps> = ({
       jobs: data.jobs.filter((job) => job.id !== jobId),
       estimates: data.estimates.filter((estimate) => estimate.jobId !== jobId),
       invoices: data.invoices.filter((invoice) => invoice.jobId !== jobId),
+      attachments: data.attachments.filter((entry) => entry.jobId !== jobId),
     };
     setData(nextData);
     if (selectedJobId === jobId) {
@@ -329,6 +363,34 @@ export const Jobs: React.FC<JobsProps> = ({
               <button className="ghost" onClick={() => setShowJobDetails((prev) => !prev)}>
                 {showJobDetails ? 'Show less details' : 'Show more details'}
               </button>
+            </div>
+            <div className="summary-box project-summary-box">
+              <div className="section-subhead">
+                <h4>Attachments</h4>
+                <span>Job-level files</span>
+              </div>
+              <div className="form-grid compact-grid">
+                <label className="field field-compact">
+                  <span>Type</span>
+                  <select value={attachmentForm.type} onChange={(event) => setAttachmentForm({ ...attachmentForm, type: event.target.value as AttachmentType })}>
+                    <option value="Contract">Contract</option>
+                    <option value="Warranty">Warranty</option>
+                    <option value="Permit">Permit</option>
+                    <option value="Receipt">Receipt</option>
+                    <option value="Photo">Photo</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </label>
+                <label className="field">
+                  <span>Name</span>
+                  <input value={attachmentForm.name} onChange={(event) => setAttachmentForm({ ...attachmentForm, name: event.target.value })} placeholder="Signed contract, permit..." />
+                </label>
+                <label className="field">
+                  <span>File</span>
+                  <input type="file" onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)} />
+                </label>
+                <button onClick={() => void addAttachment()} disabled={!attachmentFile}>Add attachment</button>
+              </div>
             </div>
             </>
           ) : (
@@ -562,6 +624,24 @@ export const Jobs: React.FC<JobsProps> = ({
                   ) : <div className="empty">No invoice linked yet.</div>}
                 </div>
               </div>
+
+              {selectedAttachments.length ? (
+                <div className="summary-box project-summary-box span-2">
+                  <div className="section-subhead">
+                    <h4>Attachment history</h4>
+                    <span>Stored files for this job</span>
+                  </div>
+                  <div className="linked-record-list">
+                    {selectedAttachments.map((entry) => (
+                      <div key={entry.id} className="linked-record-row">
+                        <strong>{entry.type}: {entry.name}</strong>
+                        <span>{entry.fileName} · {Math.round(entry.sizeBytes / 1024)} KB</span>
+                        <small>{new Date(entry.createdAt).toLocaleString()}</small>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>}
 
             {isEditingJob && showJobDetails && (

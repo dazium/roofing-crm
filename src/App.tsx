@@ -14,6 +14,7 @@ import { Damages } from './sections/Damages';
 import { Photos } from './sections/Photos';
 import { CrewMode } from './sections/CrewMode';
 import { Locations } from './sections/Locations';
+import { Reports } from './sections/Reports';
 import { seedData } from './data';
 import { normalizeAppData, validateAppDataImport } from './normalization';
 import { defaultEstimate, optimizeInspectionPhoto, uid, validateInspectionPhotoFile } from './lib';
@@ -130,7 +131,6 @@ export default function App() {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(seedData.jobs[0]?.id ?? null);
   const [photoCategory, setPhotoCategory] = useState<PhotoCategory>('Damage');
   const [photoLabel, setPhotoLabel] = useState('');
-
   const [jobSearch, setJobSearch] = useState('');
   const [estimateForm, setEstimateForm] = useState<Estimate>(() => {
     const jobId = seedData.jobs[0]?.id ?? '';
@@ -251,6 +251,110 @@ export default function App() {
     setStorageMessage(`Backup downloaded: ${backupName}`);
   }
 
+  function exportCustomersCSV() {
+    const headers = ['ID', 'Name', 'Phone', 'Email', 'Address', 'Lead Status', 'Source', 'Notes'];
+    const rows = data.customers.map(customer => [
+      customer.id,
+      customer.name,
+      customer.phone,
+      customer.email,
+      customer.address,
+      customer.leadStatus,
+      customer.source,
+      customer.notes
+    ]);
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => 
+        row.map(field => 
+          `"${String(field).replace(/"/g, '""')}"`
+        ).join(',')
+      )
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `roofingcrm-customers-${new Date().toISOString().slice(0,10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function exportJobsCSV() {
+    const headers = ['ID', 'Customer ID', 'Title', 'Status', 'Priority', 'Scheduled For', 'Notes', 'Crew ID', 'Created At'];
+    const rows = data.jobs.map(job => [
+      job.id,
+      job.customerId,
+      job.title,
+      job.status,
+      job.priority,
+      job.scheduledFor || '',
+      job.notes,
+      job.crewId || '',
+      job.createdAt
+    ]);
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => 
+        row.map(field => 
+          `"${String(field).replace(/"/g, '""')}"`
+        ).join(',')
+      )
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `roofingcrm-jobs-${new Date().toISOString().slice(0,10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function exportInvoicesCSV() {
+    const headers = ['ID', 'Job ID', 'Invoice Number', 'Amount', 'Paid Amount', 'Balance Due', 'Status', 'Due Date', 'Issued Date', 'Paid Date', 'Notes'];
+    const rows = data.invoices.map(invoice => [
+      invoice.id,
+      invoice.jobId,
+      invoice.invoiceNumber,
+      invoice.amount,
+      invoice.paidAmount,
+      invoice.balanceDue,
+      invoice.status,
+      invoice.dueDate,
+      invoice.issuedDate || '',
+      invoice.paidDate || '',
+      invoice.notes
+    ]);
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => 
+        row.map(field => 
+          `"${String(field).replace(/"/g, '""')}"`
+        ).join(',')
+      )
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `roofingcrm-invoices-${new Date().toISOString().slice(0,10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  void exportCustomersCSV;
+  void exportJobsCSV;
+  void exportInvoicesCSV;
+
   async function importBackup(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -271,10 +375,10 @@ export default function App() {
       applySelection(importedData, importedData.customers[0]?.id ?? null, null);
       setView('dashboard');
       setStorageMessage(`Imported backup: ${file.name}`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown JSON error';
-      setStorageMessage(`Backup import failed - ${message}`);
-    }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown JSON error';
+        setStorageMessage(`Backup import failed - ${message}`);
+      }
 
     event.target.value = '';
   }
@@ -393,22 +497,56 @@ export default function App() {
   const totalPhotos = data.inspections.reduce((sum, inspection) => sum + inspection.photos.length, 0);
   const totalSquares = data.inspections.reduce((sum, inspection) => sum + inspection.measurements.squares, 0);
 
-  const navItems: { key: View; label: string; count?: number }[] = [
-    { key: 'dashboard', label: 'Workspace' },
-    { key: 'customers', label: 'Customers', count: data.customers.length },
-    { key: 'inspect', label: 'Inspection', count: data.inspections.length },
-    { key: 'photos', label: 'Photos', count: totalPhotos },
-    { key: 'estimates', label: 'Estimates', count: data.estimates.length },
-    { key: 'jobs', label: 'Projects', count: data.jobs.length },
-    { key: 'damages', label: 'Damages', count: data.damages.length },
-    { key: 'invoices', label: 'Invoices', count: data.invoices.length },
-    { key: 'tasks', label: 'Tasks', count: data.tasks.length },
-    { key: 'calendar', label: 'Calendar', count: data.appointments.length },
-    { key: 'locations', label: 'Locations', count: data.customers.filter((customer) => customer.address.trim()).length },
-    { key: 'crews', label: 'Crews', count: data.crews.length },
-    { key: 'crew-mode', label: 'Crew Mode', count: data.jobs.filter((job) => job.crewId).length },
-    { key: 'settings', label: 'Settings' }
+  type NavItem = { key: View; label: string; count?: number; child?: boolean };
+  type NavGroup = { label: string; items: NavItem[] };
+  const navGroups: NavGroup[] = [
+    {
+      label: 'Workspace',
+      items: [
+        { key: 'dashboard', label: 'Workspace' },
+      ],
+    },
+    {
+      label: 'Sales flow',
+      items: [
+        { key: 'customers', label: 'Customers', count: data.customers.length },
+        { key: 'inspect', label: 'Inspection', count: data.inspections.length },
+        { key: 'estimates', label: 'Estimates', count: data.estimates.length },
+        { key: 'photos', label: 'Photos', count: totalPhotos, child: true },
+        { key: 'damages', label: 'Damages', count: data.damages.length, child: true },
+        { key: 'jobs', label: 'Projects', count: data.jobs.length },
+        { key: 'invoices', label: 'Invoices', count: data.invoices.length },
+      ],
+    },
+    {
+      label: 'Operations',
+      items: [
+        { key: 'tasks', label: 'Tasks', count: data.tasks.length },
+        { key: 'calendar', label: 'Calendar', count: data.appointments.length },
+        { key: 'locations', label: 'Locations', count: data.customers.filter((customer) => customer.address.trim()).length },
+      ],
+    },
+    {
+      label: 'Crews',
+      items: [
+        { key: 'crews', label: 'Crews', count: data.crews.length },
+        { key: 'crew-mode', label: 'Crew Mode', count: data.jobs.filter((job) => job.crewId).length },
+      ],
+    },
+    {
+      label: 'Admin',
+      items: [
+        { key: 'settings', label: 'Settings' },
+      ],
+    },
+    {
+      label: 'Analytics',
+      items: [
+        { key: 'reports', label: 'Reports', count: data.invoices.length },
+      ],
+    },
   ];
+  const navItems = navGroups.flatMap((group) => group.items);
   const activeView = navItems.find((item) => item.key === view);
   const activeViewDetail: Record<View, string> = {
     dashboard: 'Focused workspace for the selected customer and project.',
@@ -425,23 +563,28 @@ export default function App() {
     crews: 'Manage roofing crews and dispatch readiness.',
     'crew-mode': 'Field-focused view for assigned crew jobs.',
     settings: 'Backups, storage mode, and delivery controls.',
+    reports: 'Business analytics and performance metrics for your roofing business.',
   };
   const showWorkspaceChrome = view !== 'settings';
   const workflowSteps: { key: View; label: string; caption: string }[] = [
     { key: 'customers', label: '1. Customer', caption: selectedCustomer?.name ?? 'Choose homeowner' },
     { key: 'inspect', label: '2. Inspection', caption: selectedInspection ? `${selectedInspection.damageType} ready` : 'Capture roof data' },
-    { key: 'photos', label: '3. Photos', caption: selectedInspection?.photos.length ? `${selectedInspection.photos.length} photo(s)` : 'Document the job' },
+    { key: 'estimates', label: '3. Estimate', caption: data.estimates.find((estimate) => estimate.jobId === selectedJobId) ? 'Photos, damages, and pricing' : 'Document, scope, price' },
     { key: 'jobs', label: '4. Project', caption: selectedJob?.title ?? 'Create or pick project' },
-    { key: 'damages', label: '5. Damages', caption: data.damages.find((damage) => damage.jobId === selectedJobId || (!selectedJobId && damage.customerId === selectedCustomerId)) ? 'Damage records saved' : 'Log damages + materials' },
-    { key: 'estimates', label: '6. Estimate', caption: data.estimates.find((estimate) => estimate.jobId === selectedJobId) ? 'Proposal drafted' : 'Price the work' },
-    { key: 'invoices', label: '7. Invoice', caption: data.invoices.find((invoice) => invoice.jobId === selectedJobId) ? 'Billing started' : 'Create billing' },
-    { key: 'tasks', label: '8. Tasks', caption: data.tasks.find((task) => task.jobId === selectedJobId || (!selectedJobId && task.customerId === selectedCustomerId)) ? 'Follow-ups tracked' : 'Add follow-up tasks' },
-    { key: 'locations', label: '9. Locations', caption: selectedCustomer?.address ?? 'Map the route' },
+    { key: 'invoices', label: '5. Invoice', caption: data.invoices.find((invoice) => invoice.jobId === selectedJobId) ? 'Billing started' : 'Create billing' },
+    { key: 'tasks', label: '6. Follow-up', caption: data.tasks.find((task) => task.jobId === selectedJobId || (!selectedJobId && task.customerId === selectedCustomerId)) ? 'Tasks tracked' : 'Add next actions' },
+    { key: 'locations', label: '7. Route', caption: selectedCustomer?.address ?? 'Map the route' },
     { key: 'settings', label: 'Settings', caption: data.companyProfile.name.trim() || 'Set company profile' },
+    { key: 'reports', label: '8. Analytics', caption: `${data.invoices.length} invoices tracked` },
   ];
-  const visibleNavItems = simpleView
-    ? navItems.filter((item) => ['dashboard', 'customers', 'inspect', 'photos', 'jobs', 'estimates', 'invoices', 'tasks', 'settings'].includes(item.key))
-    : navItems;
+  const visibleNavGroups = simpleView
+    ? navGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => ['dashboard', 'customers', 'inspect', 'photos', 'damages', 'jobs', 'estimates', 'invoices', 'tasks', 'settings', 'reports'].includes(item.key)),
+      }))
+      .filter((group) => group.items.length > 0)
+    : navGroups;
   const quickActions: { label: string; view: View; tone?: 'primary' | 'ghost' }[] = [
     { label: 'Start inspection', view: 'inspect', tone: 'primary' },
     { label: 'Add photos', view: 'photos', tone: 'ghost' },
@@ -459,19 +602,21 @@ export default function App() {
             <p>Built for roofing workflow, customers, and crews</p>
           </div>
         </div>
-        <div className="sidebar-section">
-          <span className="sidebar-label">Workspace</span>
-          {visibleNavItems.map((item) => (
-            <button
-              key={item.key}
-              className={`nav-item nav-button ${view === item.key ? 'active' : ''}`}
-              onClick={() => setView(item.key)}
-            >
-              <span>{item.label}</span>
-              {typeof item.count === 'number' ? <strong>{item.count}</strong> : <strong>•</strong>}
-            </button>
-          ))}
-        </div>
+        {visibleNavGroups.map((group) => (
+          <div className="sidebar-section" key={group.label}>
+            <span className="sidebar-label">{group.label}</span>
+            {group.items.map((item) => (
+              <button
+                key={item.key}
+                className={`nav-item nav-button ${item.child ? 'nav-child' : ''} ${view === item.key ? 'active' : ''}`}
+                onClick={() => setView(item.key)}
+              >
+                <span>{item.label}</span>
+                {typeof item.count === 'number' ? <strong>{item.count}</strong> : <strong>•</strong>}
+              </button>
+            ))}
+          </div>
+        ))}
         <div className="sidebar-section">
           <span className="sidebar-label">Today</span>
           <div className="nav-item">
@@ -526,15 +671,22 @@ export default function App() {
             ))}
           </div>
           <div className="main-nav mobile-nav">
-            {visibleNavItems.map((item) => (
-              <button
-                key={`mobile-${item.key}`}
-                className={`main-nav-button ${view === item.key ? 'active' : ''}`}
-                onClick={() => setView(item.key)}
-              >
-                <span>{item.label}</span>
-                {typeof item.count === 'number' ? <strong>{item.count}</strong> : <strong>•</strong>}
-              </button>
+            {visibleNavGroups.map((group) => (
+              <div className="mobile-nav-group" key={`mobile-${group.label}`}>
+                <span className="mobile-nav-label">{group.label}</span>
+                <div className="mobile-nav-items">
+                  {group.items.map((item) => (
+                    <button
+                      key={`mobile-${item.key}`}
+                      className={`main-nav-button ${item.child ? 'nav-child' : ''} ${view === item.key ? 'active' : ''}`}
+                      onClick={() => setView(item.key)}
+                    >
+                      <span>{item.label}</span>
+                      {typeof item.count === 'number' ? <strong>{item.count}</strong> : <strong>•</strong>}
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -737,6 +889,13 @@ export default function App() {
               exportBackup={exportBackup}
               importInputRef={importInputRef}
               handleImport={importBackup}
+            />
+          )}
+
+          {view === 'reports' && (
+            <Reports
+              data={data}
+              setView={setView}
             />
           )}
 
