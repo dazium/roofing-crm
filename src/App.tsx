@@ -495,7 +495,6 @@ export default function App() {
   }
 
   const totalPhotos = data.inspections.reduce((sum, inspection) => sum + inspection.photos.length, 0);
-  const totalSquares = data.inspections.reduce((sum, inspection) => sum + inspection.measurements.squares, 0);
 
   type NavItem = { key: View; label: string; count?: number; child?: boolean };
   type NavGroup = { label: string; items: NavItem[] };
@@ -617,21 +616,6 @@ export default function App() {
             ))}
           </div>
         ))}
-        <div className="sidebar-section">
-          <span className="sidebar-label">Today</span>
-          <div className="nav-item">
-            <span>Open jobs</span>
-            <strong>{data.jobs.filter((job) => job.status !== 'Complete' && job.status !== 'Paid').length}</strong>
-          </div>
-          <div className="nav-item">
-            <span>Photo uploads</span>
-            <strong>{totalPhotos}</strong>
-          </div>
-          <div className="nav-item">
-            <span>Base plan squares</span>
-            <strong>{totalSquares}</strong>
-          </div>
-        </div>
       </aside>
       <main className="main-pane">
         <div className="page-header-shell">
@@ -659,6 +643,7 @@ export default function App() {
               </div>
             </div>
           </div>
+          {view === 'dashboard' && (
           <div className="quick-action-bar" aria-label="Common actions">
             {quickActions.map((action) => (
               <button
@@ -670,6 +655,7 @@ export default function App() {
               </button>
             ))}
           </div>
+          )}
           <div className="main-nav mobile-nav">
             {visibleNavGroups.map((group) => (
               <div className="mobile-nav-group" key={`mobile-${group.label}`}>
@@ -723,18 +709,20 @@ export default function App() {
                   <small>{selectedJob ? `${selectedJob.status} · ${selectedJob.scheduledFor || 'No date set'}` : 'Pick a job to build estimates and invoices.'}</small>
                 </div>
               </div>
-              <div className="workflow-strip">
-                {workflowSteps.map((step) => (
-                  <button
-                    key={step.key}
-                    className={`workflow-step ${view === step.key ? 'active' : ''}`}
-                    onClick={() => setView(step.key)}
-                  >
-                    <span>{step.label}</span>
-                    <strong>{step.caption}</strong>
-                  </button>
-                ))}
-              </div>
+              {view === 'dashboard' && (
+                <div className="workflow-strip">
+                  {workflowSteps.map((step) => (
+                    <button
+                      key={step.key}
+                      className={`workflow-step ${view === step.key ? 'active' : ''}`}
+                      onClick={() => setView(step.key)}
+                    >
+                      <span>{step.label}</span>
+                      <strong>{step.caption}</strong>
+                    </button>
+                  ))}
+                </div>
+              )}
             </>
           )}
 
@@ -946,3 +934,6 @@ export default function App() {
     </div>
   );
 }
+
+
+

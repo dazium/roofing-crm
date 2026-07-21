@@ -269,12 +269,44 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <>
-      <section className="hero-grid workspace-hero-grid">
-        <div className="card hero-card workspace-hero-card">
+      <section className="dashboard-command-grid">
+        <div className="card workspace-focus-card dashboard-next-card">
+          <div className="section-head">
+            <div>
+              <span className="pill pill-blue">Next best action</span>
+              <h3>{nextAction.title}</h3>
+              <span>What should happen next for the selected workspace</span>
+            </div>
+          </div>
+
+          <div className="workflow-callout">
+            <strong>{nextAction.label}</strong>
+            <span>{nextAction.detail}</span>
+          </div>
+
+          <div className="hero-actions">
+            <button onClick={nextAction.action}>{nextAction.label}</button>
+            <button className="ghost" onClick={() => setShowWorkspaceDetails((prev) => !prev)}>
+              {showWorkspaceDetails ? 'Hide workspace detail' : 'Workspace detail'}
+            </button>
+          </div>
+
+          {showWorkspaceDetails && <div className="linked-record-list workspace-links-list">
+            {workspaceLinks.map((item) => (
+              <button key={item.title} className="linked-record-row linked-record-action" onClick={item.action}>
+                <strong>{item.title}</strong>
+                <span>{item.detail}</span>
+                <small>{item.actionLabel}</small>
+              </button>
+            ))}
+          </div>}
+        </div>
+
+        <div className="card dashboard-context-card">
           <div className="section-head">
             <div>
               <span className="pill pill-blue">Current workspace</span>
-              <h2>{selectedJob?.title ?? selectedCustomer?.name ?? 'Select a customer to focus the workspace'}</h2>
+              <h3>{selectedJob?.title ?? selectedCustomer?.name ?? 'Select a customer to focus the workspace'}</h3>
               <p>
                 {selectedCustomer && selectedJob
                   ? `${selectedCustomer.name} · ${selectedJob.status}${selectedJob.scheduledFor ? ` · scheduled ${selectedJob.scheduledFor}` : ''}`
@@ -285,12 +317,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
               {selectedCustomer ? <span className="pill pill-green">{selectedCustomer.leadStatus}</span> : null}
               {selectedJob ? <span className="pill pill-orange">{selectedJob.status}</span> : null}
             </div>
-          </div>
-
-          <div className="hero-actions">
-            <button className="ghost" onClick={() => setShowWorkspaceDetails((prev) => !prev)}>
-              {showWorkspaceDetails ? 'Show less details' : 'Show more details'}
-            </button>
           </div>
 
           {showWorkspaceDetails && <div className="workspace-meta-grid">
@@ -365,7 +391,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             )}
           </div>}
 
-          <div className="hero-actions">
+          <div className="dashboard-action-row">
             <button onClick={onOpenInspect}>Open inspection</button>
             <button className="ghost" onClick={onOpenDamages}>Open damages</button>
             <button className="ghost" onClick={onOpenEstimates}>Open estimates</button>
@@ -373,32 +399,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <button className="ghost" onClick={onOpenTasks}>Open tasks</button>
             <button className="ghost" onClick={() => setView('jobs')}>Open projects</button>
           </div>
-        </div>
-
-        <div className="card workspace-focus-card">
-          <div className="section-head">
-            <div>
-              <h3>{nextAction.title}</h3>
-              <span>Clear next step for the selected workspace</span>
-            </div>
-          </div>
-
-          <div className="workflow-callout">
-            <strong>{nextAction.label}</strong>
-            <span>{nextAction.detail}</span>
-          </div>
-
-          <button onClick={nextAction.action}>{nextAction.label}</button>
-
-          {showWorkspaceDetails && <div className="linked-record-list workspace-links-list">
-            {workspaceLinks.map((item) => (
-              <button key={item.title} className="linked-record-row linked-record-action" onClick={item.action}>
-                <strong>{item.title}</strong>
-                <span>{item.detail}</span>
-                <small>{item.actionLabel}</small>
-              </button>
-            ))}
-          </div>}
         </div>
       </section>
 

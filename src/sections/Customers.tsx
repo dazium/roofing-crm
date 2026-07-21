@@ -95,11 +95,23 @@ export const Customers: React.FC<CustomersProps> = ({
     () => data.inspections.filter((inspection) => inspection.customerId === selectedCustomerId),
     [data.inspections, selectedCustomerId]
   );
-  const customerJobIds = customerJobs.map((job) => job.id);
-  const customerEstimates = data.estimates.filter((estimate) => customerJobIds.includes(estimate.jobId));
-  const customerInvoices = data.invoices.filter((invoice) => customerJobIds.includes(invoice.jobId));
-  const customerCommunications = data.communications.filter((entry) => entry.customerId === selectedCustomerId);
-  const customerAttachments = data.attachments.filter((entry) => entry.customerId === selectedCustomerId);
+  const customerJobIds = useMemo(() => customerJobs.map((job) => job.id), [customerJobs]);
+  const customerEstimates = useMemo(
+    () => data.estimates.filter((estimate) => customerJobIds.includes(estimate.jobId)),
+    [customerJobIds, data.estimates]
+  );
+  const customerInvoices = useMemo(
+    () => data.invoices.filter((invoice) => customerJobIds.includes(invoice.jobId)),
+    [customerJobIds, data.invoices]
+  );
+  const customerCommunications = useMemo(
+    () => data.communications.filter((entry) => entry.customerId === selectedCustomerId),
+    [data.communications, selectedCustomerId]
+  );
+  const customerAttachments = useMemo(
+    () => data.attachments.filter((entry) => entry.customerId === selectedCustomerId),
+    [data.attachments, selectedCustomerId]
+  );
   const openJobs = customerJobs.filter((job) => !['Complete', 'Paid'].includes(job.status));
   const unpaidInvoices = customerInvoices.filter((invoice) => invoice.status !== 'Paid');
   const leadWorkflowContext = {
