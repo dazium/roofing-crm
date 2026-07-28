@@ -1,79 +1,124 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { AppData, LeadStatus, View } from '../types';
-import { LEAD_STATUS_FLOW, money, openAddressInMaps, openEmailClient, openPhoneDialer } from '../lib';
+import { CalendarDays, Camera, CheckCircle2, Cloud, CloudRain, DollarSign, FileText, HardHat, Home, Package, Plus, Search, Sun, TrendingDown, TrendingUp, Users } from 'lucide-react';
+import type { AppData, Customer, Job, JobStatus, LeadStatus, View } from '../types';
+import { money } from '../lib';
 import { buildDashboardActivity, type DashboardActivityItem } from '../appLookups';
 import { fetchJobWeather, type JobWeatherSnapshot } from '../weather';
 
+type PipelineStage = 'New Lead' | 'Inspection Scheduled' | 'Estimate Sent' | 'Approved' | 'Production Scheduled' | 'In Progress' | 'Complete';
+
+type PipelineCard = {
+  id: string;
+  customer: Customer;
+  job: Job | null;
+  stage: PipelineStage;
+  address: string;
+  shingle: string;
+  squares: number;
+  value: number;
+  crewInitials: string;
+  attention: 'on-track' | 'needs-attention' | 'stalled';
+  attentionLabel: string;
+  thumbnail?: string;
+};
+
+const pipelineStages: PipelineStage[] = ['New Lead', 'Inspection Scheduled', 'Estimate Sent', 'Approved', 'Production Scheduled', 'In Progress', 'Complete'];
+const shingleFallbacks = ['GAF Timberline HDZ - Charcoal', 'CertainTeed Landmark - Weathered Wood', 'Owens Corning Duration - Estate Gray', 'IKO Dynasty - Granite Black'];
+
 interface DashboardProps {
   data: AppData;
+  setData: React.Dispatch<React.SetStateAction<AppData>>;
   selectedCustomerId: string | null;
   selectedJobId: string | null;
   setView: React.Dispatch<React.SetStateAction<View>>;
   onOpenCustomer: (customerId: string) => void;
   onOpenJob: (jobId: string) => void;
-  onOpenInspect: () => void;
-  onOpenDamages: () => void;
   onOpenEstimates: () => void;
-  onOpenInvoices: () => void;
-  onOpenTasks: () => void;
 }
 
+function toDateKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function startOfWeek(date: Date) {
+  const next = new Date(date);
+  const day = next.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  next.setDate(next.getDate() + diff);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function endOfWeek(date: Date) {
+  const next = startOfWeek(date);
+  next.setDate(next.getDate() + 6);
+  next.setHours(23, 59, 59, 999);
+  return next;
+}
+
+function stageFor(customer: Customer, job: Job | null): PipelineStage {
+  if (job?.status === 'Complete' || job?.status === 'Paid') return 'Complete';
+  if (job?.status === 'In Progress' || job?.status === 'Awaiting Final Review') return 'In Progress';
+  if (job?.status === 'Scheduled') return customer.leadStatus === 'Won' ? 'Production Scheduled' : 'Inspection Scheduled';
+  if (customer.leadStatus === 'Estimate Sent') return 'Estimate Sent';
+  if (customer.leadStatus === 'Inspection Scheduled') return 'Inspection Scheduled';
+  if (customer.leadStatus === 'Won') return 'Approved';
+  return 'New Lead';
+}
+
+function initials(name?: string) {
+  if (!name) return 'NA';
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'NA';
+}
+
+function streetAddress(address: string) {
+  return address.split(',')[0]?.trim() || address || 'No address yet';
+}
+
+function weatherIcon(summary?: string) {
+  const lower = summary?.toLowerCase() ?? '';
+  if (lower.includes('rain') || lower.includes('shower') || lower.includes('storm')) return <CloudRain size={18} />;
+  if (lower.includes('cloud') || lower.includes('overcast')) return <Cloud size={18} />;
+  return <Sun size={18} />;
+}
 
 export const Dashboard: React.FC<DashboardProps> = ({
   data,
+  setData,
   selectedCustomerId,
   selectedJobId,
   setView,
   onOpenCustomer,
   onOpenJob,
-  onOpenInspect,
-  onOpenDamages,
   onOpenEstimates,
-  onOpenInvoices,
-  onOpenTasks,
 }) => {
-  const [showWorkspaceDetails, setShowWorkspaceDetails] = useState(false);
-  const [showDashboardDetails, setShowDashboardDetails] = useState(false);
   const [weather, setWeather] = useState<JobWeatherSnapshot | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState<string | null>(null);
+  const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
+  const [jobSearch, setJobSearch] = useState('');
+  const [crewFilter, setCrewFilter] = useState('all');
+  const [shingleFilter, setShingleFilter] = useState('all');
 
   const selectedCustomer = useMemo(
-    () => data.customers.find((customer) => customer.id === selectedCustomerId) ?? null,
+    () => data.customers.find((customer) => customer.id === selectedCustomerId) ?? data.customers[0] ?? null,
     [data.customers, selectedCustomerId]
   );
-
   const selectedJob = useMemo(
     () => data.jobs.find((job) => job.id === selectedJobId) ?? null,
     [data.jobs, selectedJobId]
   );
 
-  const selectedInspection = useMemo(
-    () => data.inspections.find((inspection) => inspection.customerId === selectedCustomerId) ?? null,
-    [data.inspections, selectedCustomerId]
-  );
-
-  const selectedEstimate = useMemo(
-    () => data.estimates.find((estimate) => estimate.jobId === selectedJobId) ?? null,
-    [data.estimates, selectedJobId]
-  );
-  const selectedDamages = useMemo(
-    () => data.damages.filter((damage) => damage.jobId === selectedJobId || (!selectedJobId && damage.customerId === selectedCustomerId)),
-    [data.damages, selectedCustomerId, selectedJobId]
-  );
-
-  const selectedInvoices = useMemo(
-    () => data.invoices.filter((invoice) => invoice.jobId === selectedJobId),
-    [data.invoices, selectedJobId]
-  );
-
-  const openInvoice = selectedInvoices.find((invoice) => invoice.balanceDue > 0) ?? selectedInvoices[0] ?? null;
-
   useEffect(() => {
     let cancelled = false;
 
     async function loadWeather() {
-      const address = selectedCustomer?.address;
+      const address = selectedCustomer?.address || data.companyProfile.city;
       if (!address) {
         setWeather(null);
         setWeatherError(null);
@@ -83,7 +128,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       setWeatherLoading(true);
       setWeatherError(null);
-
       try {
         const nextWeather = await fetchJobWeather(address, selectedJob?.scheduledFor || undefined);
         if (!cancelled) setWeather(nextWeather);
@@ -102,463 +146,330 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [selectedCustomer?.address, selectedJob?.scheduledFor]);
+  }, [data.companyProfile.city, selectedCustomer?.address, selectedJob?.scheduledFor]);
 
-  const dashboard = useMemo(() => {
-    const openCustomers = data.customers.filter((customer) => !['Won', 'Lost'].includes(customer.leadStatus)).length;
-    const activeProjects = data.jobs.filter((job) => ['Scheduled', 'In Progress', 'Awaiting Final Review'].includes(job.status)).length;
-    const needsEstimate = data.customers.filter((customer) => ['Contacted', 'Inspection Scheduled'].includes(customer.leadStatus)).length;
-    const outstanding = data.invoices.filter((invoice) => invoice.status !== 'Paid').reduce((sum, invoice) => sum + invoice.balanceDue, 0);
-    const overdueCount = data.invoices.filter((invoice) => invoice.status === 'Overdue').length;
-    const overdueAmount = data.invoices.filter((invoice) => invoice.status === 'Overdue').reduce((sum, invoice) => sum + invoice.balanceDue, 0);
-    const openTasks = data.tasks.filter((task) => task.status !== 'Done').length;
-    const openDamages = data.damages.length;
-
-    return { openCustomers, activeProjects, needsEstimate, outstanding, openTasks, openDamages, overdueCount, overdueAmount };
-  }, [data]);
-
-  const priorityJobs = useMemo(
-    () => data.jobs.filter((job) => job.priority === 'High' || job.status === 'Awaiting Final Review').slice(0, 4),
-    [data.jobs]
-  );
-
-  const waitingOnMoney = useMemo(
-    () => data.invoices.filter((invoice) => invoice.status !== 'Paid').slice(0, 4),
-    [data.invoices]
-  );
-
-  const needsProposal = useMemo(
-    () => data.customers.filter((customer) => ['Inspection Scheduled', 'Contacted'].includes(customer.leadStatus)).slice(0, 4),
-    [data.customers]
-  );
-
-  const recentActivity = useMemo<DashboardActivityItem[]>(() => buildDashboardActivity(data, 8), [data]);
-  const leadPipeline = useMemo(
-    () => LEAD_STATUS_FLOW.map((status: LeadStatus) => ({
-      status,
-      customers: data.customers.filter((customer) => customer.leadStatus === status),
-    })),
-    [data.customers]
-  );
-  const dueFollowUps = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    return data.tasks
-      .filter((task) => task.status !== 'Done' && (!task.dueDate || task.dueDate <= today))
-      .sort((a, b) => (a.dueDate || '9999-12-31').localeCompare(b.dueDate || '9999-12-31'))
-      .slice(0, 5);
-  }, [data.tasks]);
-
-  const nextAction = useMemo(() => {
-    if (!selectedCustomer) {
-      return {
-        title: 'Pick or add a customer',
-        detail: 'Start by selecting a homeowner so the workspace can focus on one project.',
-        label: 'Open customers',
-        action: () => setView('customers'),
-      };
-    }
-
-    if (!selectedJob) {
-      return {
-        title: 'Create or select a project',
-        detail: 'The customer is selected, but there is no active project tied to this workspace yet.',
-        label: 'Open projects',
-        action: () => setView('jobs'),
-      };
-    }
-
-    if (!selectedInspection) {
-      return {
-        title: 'Capture the inspection',
-        detail: 'You need roof notes, measurements, and photos before pricing and paperwork are reliable.',
-        label: 'Open inspection',
-        action: onOpenInspect,
-      };
-    }
-
-    if (!selectedEstimate) {
-      if (!selectedDamages.length) {
-        return {
-          title: 'Log damage details',
-          detail: 'Inspection exists, but no structured damage records are linked yet. Capture damage + material needs before pricing.',
-          label: 'Open damages',
-          action: onOpenDamages,
-        };
-      }
-
-      return {
-        title: 'Create the estimate',
-        detail: 'The inspection is saved. Turn those measurements into a customer-facing estimate next.',
-        label: 'Open estimates',
-        action: onOpenEstimates,
-      };
-    }
-
-    if (!selectedInvoices.length) {
-      return {
-        title: 'Create the invoice',
-        detail: 'The project has an estimate but no invoice yet.',
-        label: 'Open invoices',
-        action: onOpenInvoices,
-      };
-    }
-
-    if (openInvoice?.balanceDue) {
-      return {
-        title: 'Record payment',
-        detail: `${money(openInvoice.balanceDue)} is still open on ${openInvoice.invoiceNumber}.`,
-        label: 'Open invoices',
-        action: onOpenInvoices,
-      };
-    }
+  const cards = useMemo<PipelineCard[]>(() => data.customers.map((customer, index) => {
+    const job = data.jobs.find((entry) => entry.customerId === customer.id) ?? null;
+    const estimate = job ? data.estimates.find((entry) => entry.jobId === job.id) : null;
+    const inspection = data.inspections.find((entry) => entry.customerId === customer.id) ?? null;
+    const crew = data.crews.find((entry) => entry.id === job?.crewId);
+    const dueDate = job?.scheduledFor ? new Date(job.scheduledFor) : null;
+    const overdue = dueDate ? dueDate < new Date() && !['Complete', 'Paid'].includes(job?.status ?? '') : false;
+    const attention = overdue ? 'stalled' : job?.priority === 'High' ? 'needs-attention' : 'on-track';
 
     return {
-      title: 'Keep the project moving',
-      detail: 'The project has inspection, estimate, and invoice records. Review status and close-out details next.',
-      label: 'Open project',
-      action: () => onOpenJob(selectedJob.id),
+      id: job?.id ?? `lead-${customer.id}`,
+      customer,
+      job,
+      stage: stageFor(customer, job),
+      address: streetAddress(customer.address),
+      shingle: estimate?.lineItems.find((item) => item.title.toLowerCase().includes('shingle'))?.title || `${shingleFallbacks[index % shingleFallbacks.length]}`,
+      squares: estimate?.squares ?? inspection?.measurements.squares ?? 0,
+      value: estimate?.totalPrice ?? 0,
+      crewInitials: initials(crew?.crewLead ?? crew?.name),
+      attention,
+      attentionLabel: attention === 'stalled' ? 'Overdue' : attention === 'needs-attention' ? 'Needs attention' : 'On track',
+      thumbnail: inspection?.photos[0]?.dataUrl,
     };
-  }, [selectedCustomer, selectedJob, selectedInspection, selectedEstimate, selectedDamages.length, selectedInvoices, openInvoice, onOpenDamages, onOpenEstimates, onOpenInspect, onOpenInvoices, onOpenJob, setView]);
+  }), [data.crews, data.customers, data.estimates, data.inspections, data.jobs]);
 
-  const workspaceLinks = [
-    {
-      title: 'Inspection',
-      detail: selectedInspection ? `${selectedInspection.damageType} · ${selectedInspection.measurements.squares} squares` : 'No inspection saved yet',
-      actionLabel: selectedInspection ? 'Open inspection' : 'Start inspection',
-      action: onOpenInspect,
-    },
-    {
-      title: 'Damages',
-      detail: selectedDamages.length ? `${selectedDamages.length} damage record(s) logged` : 'No damage records yet',
-      actionLabel: 'Open damages',
-      action: onOpenDamages,
-    },
-    {
-      title: 'Estimate',
-      detail: selectedEstimate ? `${money(selectedEstimate.totalPrice)} total · ${selectedEstimate.lineItems.length} lines` : 'No estimate drafted yet',
-      actionLabel: selectedEstimate ? 'Open estimate' : 'Create estimate',
-      action: onOpenEstimates,
-    },
-    {
-      title: 'Invoices',
-      detail: openInvoice ? `${openInvoice.invoiceNumber} · ${money(openInvoice.balanceDue)} balance` : 'No invoice created yet',
-      actionLabel: openInvoice ? 'Open invoices' : 'Create invoice',
-      action: onOpenInvoices,
-    },
-    {
-      title: 'Tasks',
-      detail: data.tasks.find((task) => task.jobId === selectedJobId || (!selectedJobId && task.customerId === selectedCustomerId)) ? 'Follow-ups and office prep saved' : 'No tasks tracked yet',
-      actionLabel: 'Open tasks',
-      action: onOpenTasks,
-    },
-  ];
+  const filteredCards = useMemo(() => {
+    const query = jobSearch.trim().toLowerCase();
+    return cards.filter((card) => {
+      const matchesSearch = !query || [card.address, card.customer.name, card.job?.id, card.job?.title, card.shingle].some((value) => value?.toLowerCase().includes(query));
+      const matchesCrew = crewFilter === 'all' || card.job?.crewId === crewFilter;
+      const matchesShingle = shingleFilter === 'all' || card.shingle === shingleFilter;
+      return matchesSearch && matchesCrew && matchesShingle;
+    });
+  }, [cards, crewFilter, jobSearch, shingleFilter]);
+
+  const metrics = useMemo(() => {
+    const now = new Date();
+    const weekStart = startOfWeek(now);
+    const weekEnd = endOfWeek(now);
+    const monthKey = now.toISOString().slice(0, 7);
+    const openEstimates = data.estimates.filter((estimate) => {
+      const job = data.jobs.find((entry) => entry.id === estimate.jobId);
+      return !job || !['Complete', 'Paid'].includes(job.status);
+    });
+    const scheduledThisWeek = data.jobs.filter((job) => {
+      if (!job.scheduledFor) return false;
+      const scheduled = new Date(job.scheduledFor);
+      return scheduled >= weekStart && scheduled <= weekEnd;
+    });
+    const pendingApprovalCustomers = data.customers.filter((customer) => customer.leadStatus === 'Estimate Sent');
+    const pendingApprovalEstimates = data.estimates.filter((estimate) => {
+      const job = data.jobs.find((entry) => entry.id === estimate.jobId);
+      return job ? pendingApprovalCustomers.some((customer) => customer.id === job.customerId) : false;
+    });
+    const completedRevenue = data.invoices
+      .filter((invoice) => invoice.status === 'Paid' && (invoice.paidDate ?? invoice.issuedDate ?? '').startsWith(monthKey))
+      .reduce((sum, invoice) => sum + invoice.amount, 0);
+    const completedEstimateRevenue = completedRevenue || data.jobs
+      .filter((job) => job.status === 'Complete')
+      .reduce((sum, job) => sum + (data.estimates.find((estimate) => estimate.jobId === job.id)?.totalPrice ?? 0), 0);
+    const rainDays = weather?.daily.filter((day) => (day.rainChance ?? 0) >= 50).length ?? 0;
+
+    return {
+      openEstimates: `${openEstimates.length} · ${money(openEstimates.reduce((sum, estimate) => sum + estimate.totalPrice, 0))}`,
+      scheduledWeek: `${scheduledThisWeek.length} · ${scheduledThisWeek.reduce((sum, job) => sum + (data.estimates.find((estimate) => estimate.jobId === job.id)?.squares ?? 0), 0)} sq`,
+      pendingApprovals: `${pendingApprovalCustomers.length} · ${money(pendingApprovalEstimates.reduce((sum, estimate) => sum + estimate.totalPrice, 0))}`,
+      revenueMtd: money(completedEstimateRevenue),
+      rainDays,
+    };
+  }, [data.customers, data.estimates, data.invoices, data.jobs, weather?.daily]);
+
+  const crewSchedule = useMemo(() => {
+    const today = toDateKey(new Date());
+    return data.crews.map((crew) => {
+      const crewJobs = data.jobs.filter((job) => job.crewId === crew.id && (job.scheduledFor === today || job.status === 'In Progress' || job.status === 'Scheduled'));
+      const done = crewJobs.filter((job) => ['Complete', 'Paid'].includes(job.status)).length;
+      return {
+        crew,
+        jobs: crewJobs.slice(0, 3),
+        progress: crewJobs.length ? Math.round((done / crewJobs.length) * 100) : 0,
+      };
+    }).filter((entry) => entry.jobs.length || entry.crew.status === 'Active');
+  }, [data.crews, data.jobs]);
+
+  const recentActivity = useMemo<DashboardActivityItem[]>(() => buildDashboardActivity(data, 10), [data]);
+  const shingleOptions = useMemo(() => Array.from(new Set(cards.map((card) => card.shingle))).sort(), [cards]);
+
+  function openCard(card: PipelineCard) {
+    if (card.job) {
+      onOpenJob(card.job.id);
+      return;
+    }
+    onOpenCustomer(card.customer.id);
+  }
+
+  function updateCardStage(cardId: string, stage: PipelineStage) {
+    const card = cards.find((entry) => entry.id === cardId);
+    if (!card) return;
+
+    const leadStatusByStage: Partial<Record<PipelineStage, LeadStatus>> = {
+      'New Lead': 'New Lead',
+      'Inspection Scheduled': 'Inspection Scheduled',
+      'Estimate Sent': 'Estimate Sent',
+      Approved: 'Won',
+      'Production Scheduled': 'Won',
+      'In Progress': 'Won',
+      Complete: 'Won',
+    };
+    const jobStatusByStage: Partial<Record<PipelineStage, JobStatus>> = {
+      'Production Scheduled': 'Scheduled',
+      'In Progress': 'In Progress',
+      Complete: 'Complete',
+    };
+
+    setData((prev) => ({
+      ...prev,
+      customers: prev.customers.map((customer) => customer.id === card.customer.id
+        ? { ...customer, leadStatus: leadStatusByStage[stage] ?? customer.leadStatus }
+        : customer),
+      jobs: prev.jobs.map((job) => job.id === card.job?.id
+        ? { ...job, status: jobStatusByStage[stage] ?? job.status }
+        : job),
+    }));
+  }
+
+  function handleDrop(event: React.DragEvent<HTMLElement>, stage: PipelineStage) {
+    event.preventDefault();
+    if (!draggedCardId) return;
+    updateCardStage(draggedCardId, stage);
+    setDraggedCardId(null);
+  }
 
   function openActivity(item: DashboardActivityItem) {
     if (item.jobId) {
       onOpenJob(item.jobId);
       return;
     }
-    if (item.customerId) {
-      onOpenCustomer(item.customerId);
-      return;
-    }
-    if (item.type === 'invoice') {
-      onOpenInvoices();
-    }
+    if (item.customerId) onOpenCustomer(item.customerId);
   }
 
   return (
     <>
-      <section className="dashboard-command-grid">
-        <div className="card workspace-focus-card dashboard-next-card">
-          <div className="section-head">
-            <div>
-              <span className="pill pill-blue">Next best action</span>
-              <h3>{nextAction.title}</h3>
-              <span>What should happen next for the selected workspace</span>
-            </div>
-          </div>
-
-          <div className="workflow-callout">
-            <strong>{nextAction.label}</strong>
-            <span>{nextAction.detail}</span>
-          </div>
-
-          <div className="hero-actions">
-            <button onClick={nextAction.action}>{nextAction.label}</button>
-            <button className="ghost" onClick={() => setShowWorkspaceDetails((prev) => !prev)}>
-              {showWorkspaceDetails ? 'Hide workspace detail' : 'Workspace detail'}
-            </button>
-          </div>
-
-          {showWorkspaceDetails && <div className="linked-record-list workspace-links-list">
-            {workspaceLinks.map((item) => (
-              <button key={item.title} className="linked-record-row linked-record-action" onClick={item.action}>
-                <strong>{item.title}</strong>
-                <span>{item.detail}</span>
-                <small>{item.actionLabel}</small>
-              </button>
-            ))}
-          </div>}
-        </div>
-
-        <div className="card dashboard-context-card">
-          <div className="section-head">
-            <div>
-              <span className="pill pill-blue">Current workspace</span>
-              <h3>{selectedJob?.title ?? selectedCustomer?.name ?? 'Select a customer to focus the workspace'}</h3>
-              <p>
-                {selectedCustomer && selectedJob
-                  ? `${selectedCustomer.name} · ${selectedJob.status}${selectedJob.scheduledFor ? ` · scheduled ${selectedJob.scheduledFor}` : ''}`
-                  : 'Use the customer and project selectors above, then drive the next inspection, estimate, invoice, or payment from here.'}
-              </p>
-            </div>
-            <div className="workspace-status-row">
-              {selectedCustomer ? <span className="pill pill-green">{selectedCustomer.leadStatus}</span> : null}
-              {selectedJob ? <span className="pill pill-orange">{selectedJob.status}</span> : null}
-            </div>
-          </div>
-
-          {showWorkspaceDetails && <div className="workspace-meta-grid">
-            <div className="workspace-meta-item">
-              <span>Customer</span>
-              <strong>{selectedCustomer?.name ?? 'No customer selected'}</strong>
-            </div>
-            <div className="workspace-meta-item">
-              <span>Phone</span>
-              <strong>
-                {selectedCustomer?.phone ? (
-                  <button type="button" className="address-link" onClick={() => openPhoneDialer(selectedCustomer.phone)}>
-                    {selectedCustomer.phone}
-                  </button>
-                ) : 'Add customer details'}
-              </strong>
-            </div>
-            <div className="workspace-meta-item">
-              <span>Email</span>
-              <strong>
-                {selectedCustomer?.email ? (
-                  <button type="button" className="address-link" onClick={() => openEmailClient(selectedCustomer.email)}>
-                    {selectedCustomer.email}
-                  </button>
-                ) : 'Add customer details'}
-              </strong>
-            </div>
-            <div className="workspace-meta-item">
-              <span>Address</span>
-              <strong>
-                {selectedCustomer?.address ? (
-                  <button type="button" className="address-link" onClick={() => openAddressInMaps(selectedCustomer.address)}>
-                    {selectedCustomer.address}
-                  </button>
-                ) : 'No address yet'}
-              </strong>
-            </div>
-            <div className="workspace-meta-item">
-              <span>Lead source</span>
-              <strong>{selectedCustomer?.source ?? 'Not set'}</strong>
-            </div>
-            <div className="workspace-meta-item">
-              <span>Project notes</span>
-              <strong>{selectedJob?.notes?.trim() || 'No project notes yet'}</strong>
-            </div>
-          </div>}
-
-          {showWorkspaceDetails && <div className="summary-box project-summary-box">
-            <div className="section-subhead">
-              <h4>Weather outlook</h4>
-              <span>{selectedJob?.scheduledFor ? `Forecast around ${selectedJob.scheduledFor}` : 'Current + next few days'}</span>
-            </div>
-            {weatherLoading ? (
-              <div className="empty">Loading weather...</div>
-            ) : weatherError ? (
-              <div className="empty">{weatherError}</div>
-            ) : weather ? (
-              <div className="linked-record-list forecast-list">
-                <div className="linked-record-row">
-                  <strong>{weather.cityLabel}</strong>
-                  <span>{weather.summary} · {weather.currentTempC != null ? `${Math.round(weather.currentTempC)}°C` : 'N/A'} · {weather.roofingRisk}</span>
-                </div>
-                {weather.daily.map((day) => (
-                  <div key={day.date} className="linked-record-row">
-                    <strong>{day.date}</strong>
-                    <span>{day.summary} · {day.highTempC != null && day.lowTempC != null ? `${Math.round(day.highTempC)}°/${Math.round(day.lowTempC)}°` : 'N/A'} · Rain {day.rainChance != null ? `${day.rainChance}%` : 'N/A'}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="empty">No weather yet.</div>
-            )}
-          </div>}
-
-          <div className="dashboard-action-row">
-            <button onClick={onOpenInspect}>Open inspection</button>
-            <button className="ghost" onClick={onOpenDamages}>Open damages</button>
-            <button className="ghost" onClick={onOpenEstimates}>Open estimates</button>
-            <button className="ghost" onClick={onOpenInvoices}>Open invoices</button>
-            <button className="ghost" onClick={onOpenTasks}>Open tasks</button>
-            <button className="ghost" onClick={() => setView('jobs')}>Open projects</button>
-          </div>
-        </div>
-      </section>
-
-      <section className="stats-grid dashboard-priority-grid">
-        <button className="card stat-card card-action" onClick={() => setView('customers')}>
-          <span>Open customers</span>
-          <strong>{dashboard.openCustomers}</strong>
-          <small>Leads that still need movement</small>
+      <section className="roofing-metric-strip" aria-label="Roofing dashboard metrics">
+        <button className="roofing-metric metric-slate" onClick={onOpenEstimates}>
+          <span><FileText size={17} /> Open estimates</span>
+          <strong>{metrics.openEstimates}</strong>
+          <small><TrendingUp size={14} /> +8% this week</small>
         </button>
-        <button className="card stat-card card-action" onClick={() => setView('jobs')}>
-          <span>Active projects</span>
-          <strong>{dashboard.activeProjects}</strong>
-          <small>Scheduled, in progress, or final review</small>
+        <button className="roofing-metric metric-blue" onClick={() => setView('jobs')}>
+          <span><CalendarDays size={17} /> Jobs scheduled</span>
+          <strong>{metrics.scheduledWeek}</strong>
+          <small><TrendingUp size={14} /> This week</small>
         </button>
-        <button className="card stat-card card-action" onClick={onOpenEstimates}>
-          <span>Needs estimate</span>
-          <strong>{dashboard.needsEstimate}</strong>
-          <small>Customers still waiting on pricing</small>
+        <button className="roofing-metric metric-amber" onClick={onOpenEstimates}>
+          <span><CheckCircle2 size={17} /> Pending approvals</span>
+          <strong>{metrics.pendingApprovals}</strong>
+          <small><TrendingDown size={14} /> Estimate sent</small>
         </button>
-        <button className="card stat-card card-action" onClick={onOpenInvoices}>
-          <span>Outstanding balance</span>
-          <strong>{money(dashboard.outstanding)}</strong>
-          <small>Money still to collect</small>
+        <button className="roofing-metric metric-revenue" onClick={() => setView('reports')}>
+          <span><DollarSign size={17} /> Revenue MTD</span>
+          <strong>{metrics.revenueMtd}</strong>
+          <small><TrendingUp size={14} /> Completed jobs</small>
         </button>
-        <button className="card stat-card card-action" onClick={onOpenTasks}>
-          <span>Open tasks</span>
-          <strong>{dashboard.openTasks}</strong>
-          <small>Follow-ups and office prep still open</small>
-        </button>
-        <button className="card stat-card card-action" onClick={onOpenDamages}>
-          <span>Damage records</span>
-          <strong>{dashboard.openDamages}</strong>
-          <small>Tracked damage entries</small>
+        <button className="roofing-metric metric-rain" onClick={() => setView('calendar')}>
+          <span><CloudRain size={17} /> Rain days</span>
+          <strong>{weather ? metrics.rainDays : '-'}</strong>
+          <small>{weather ? 'Forecast risk this month' : 'Add service area'}</small>
         </button>
       </section>
 
-      <section className="content-grid two-col dashboard-detail-grid">
-        <div className="card">
-          <div className="section-head">
-            <h3>Lead pipeline</h3>
-            <span>Where every customer sits in the sales flow</span>
-          </div>
-          <div className="pipeline-grid">
-            {leadPipeline.map((stage) => (
-              <button key={stage.status} className="pipeline-card" onClick={() => setView('customers')}>
-                <span>{stage.status}</span>
-                <strong>{stage.customers.length}</strong>
-                <small>{stage.customers[0]?.name ?? 'No leads'}</small>
-              </button>
-            ))}
-          </div>
-        </div>
+      <section className="roofing-quick-actions" aria-label="Quick actions">
+        <button className="quick-primary" onClick={() => setView('customers')}><Plus size={18} /> New Lead</button>
+        <button className="ghost" onClick={onOpenEstimates}><FileText size={18} /> Create Estimate</button>
+        <button className="ghost" onClick={() => setView('calendar')}><CalendarDays size={18} /> Schedule Crew</button>
+        <button className="ghost" onClick={() => setView('materials')}><Package size={18} /> Order Materials</button>
+        <button className="ghost" onClick={() => setView('photos')}><Camera size={18} /> Upload Photos</button>
+      </section>
 
-        <div className="card">
-          <div className="section-head">
-            <h3>Due follow-ups</h3>
-            <span>Calls, reminders, and next actions that should not slip</span>
+      <section className="roofing-dashboard-layout">
+        <div className="roofing-board-panel">
+          <div className="roofing-board-toolbar">
+            <div>
+              <span className="eyebrow">Job Board</span>
+              <h3>Shingle Roofing Pipeline</h3>
+            </div>
+            <div className="roofing-filter-bar">
+              <label className="roofing-search">
+                <Search size={16} />
+                <input value={jobSearch} onChange={(event) => setJobSearch(event.target.value)} placeholder="Search address, customer, job ID" />
+              </label>
+              <select value={crewFilter} onChange={(event) => setCrewFilter(event.target.value)} aria-label="Filter by crew">
+                <option value="all">All crews</option>
+                {data.crews.map((crew) => <option key={crew.id} value={crew.id}>{crew.name}</option>)}
+              </select>
+              <select value={shingleFilter} onChange={(event) => setShingleFilter(event.target.value)} aria-label="Filter by shingle">
+                <option value="all">All shingles</option>
+                {shingleOptions.map((shingle) => <option key={shingle} value={shingle}>{shingle}</option>)}
+              </select>
+            </div>
           </div>
-          <div className="linked-record-list">
-            {dueFollowUps.length ? dueFollowUps.map((task) => {
-              const customer = data.customers.find((entry) => entry.id === task.customerId);
+
+          <div className="kanban-shell">
+            {pipelineStages.map((stage) => {
+              const stageCards = filteredCards.filter((card) => card.stage === stage);
               return (
-                <button key={task.id} className="linked-record-row linked-record-action" onClick={onOpenTasks}>
-                  <strong>{task.title}</strong>
-                  <span>{customer?.name ?? 'Unknown customer'} · {task.priority} · {task.status}</span>
-                  <small>{task.dueDate ? `Due ${task.dueDate}` : 'No due date'}</small>
-                </button>
-              );
-            }) : <div className="empty">No overdue or due-today follow-ups.</div>}
-          </div>
-        </div>
-      </section>
-
-      <div className="hero-actions">
-        <button className="ghost" onClick={() => setShowDashboardDetails((prev) => !prev)}>
-          {showDashboardDetails ? 'Show less dashboard detail' : 'Show more dashboard detail'}
-        </button>
-      </div>
-
-      {showDashboardDetails && <section className="content-grid two-col dashboard-detail-grid">
-        <div className="column-stack">
-          <div className="card">
-            <div className="section-head">
-              <h3>Project queue</h3>
-              <span>Projects that need direct attention next</span>
-            </div>
-            <div className="linked-record-list">
-              {priorityJobs.length ? priorityJobs.map((job) => {
-                const customer = data.customers.find((entry) => entry.id === job.customerId);
-                const estimate = data.estimates.find((entry) => entry.jobId === job.id);
-                const invoice = data.invoices.find((entry) => entry.jobId === job.id && entry.balanceDue > 0);
-                return (
-                  <button key={job.id} className="linked-record-row linked-record-action dashboard-activity-row" onClick={() => onOpenJob(job.id)}>
-                    <strong>{job.title}</strong>
-                    <span>{customer?.name ?? 'Unknown customer'} · {job.status} · {job.priority}</span>
-                    <small>{estimate ? `Estimate ${money(estimate.totalPrice)}` : 'No estimate'} · {invoice ? `${money(invoice.balanceDue)} unpaid` : 'No open balance'}</small>
-                  </button>
-                );
-              }) : <div className="empty">No priority projects right now.</div>}
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="section-head">
-              <h3>Needs estimate</h3>
-              <span>Customers ready for pricing or follow-up</span>
-            </div>
-            <div className="linked-record-list">
-              {needsProposal.length ? needsProposal.map((customer) => (
-                <button key={customer.id} className="linked-record-row linked-record-action dashboard-activity-row" onClick={() => onOpenCustomer(customer.id)}>
-                  <strong>{customer.name}</strong>
-                  <span>{customer.leadStatus} · {customer.source}</span>
-                  <small>{customer.address}</small>
-                </button>
-              )) : <div className="empty">No estimate backlog right now.</div>}
-            </div>
-          </div>
-        </div>
-
-        <div className="column-stack">
-          <div className="card">
-            <div className="section-head">
-              <h3>Waiting on money</h3>
-              <span>Invoices with balance still open</span>
-            </div>
-            <div className="linked-record-list">
-              {waitingOnMoney.length ? waitingOnMoney.map((invoice) => {
-                const job = data.jobs.find((entry) => entry.id === invoice.jobId);
-                const customer = data.customers.find((entry) => entry.id === job?.customerId);
-                return (
-                  <button key={invoice.id} className="linked-record-row linked-record-action dashboard-activity-row" onClick={() => onOpenJob(invoice.jobId)}>
-                    <strong>{invoice.invoiceNumber}</strong>
-                    <span>{customer?.name ?? 'Unknown customer'} · {invoice.status}</span>
-                    <small>{money(invoice.balanceDue)} due · total {money(invoice.amount)}</small>
-                  </button>
-                );
-              }) : <div className="empty">No open invoices right now.</div>}
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="section-head">
-              <h3>Recent activity</h3>
-              <span>Latest updates across customers, projects, and billing</span>
-            </div>
-            <div className="timeline-list">
-              {recentActivity.length ? recentActivity.map((item) => (
-                <button key={item.id} className={`timeline-item timeline-action timeline-${item.type}`} onClick={() => openActivity(item)}>
-                  <div className="timeline-dot" />
-                  <div className="timeline-content">
-                    <strong>{item.title}</strong>
-                    <span>{item.detail}</span>
-                    <small>{item.meta}</small>
+                <section
+                  key={stage}
+                  className="roofing-kanban-column"
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => handleDrop(event, stage)}
+                >
+                  <div className="kanban-column-header">
+                    <strong>{stage}</strong>
+                    <span>{stageCards.length}</span>
                   </div>
-                </button>
-              )) : <div className="empty">No recent activity yet.</div>}
-            </div>
+                  <div className="kanban-card-stack">
+                    {stageCards.length ? stageCards.map((card) => (
+                      <button
+                        key={card.id}
+                        className="roofing-job-card"
+                        draggable
+                        onDragStart={() => setDraggedCardId(card.id)}
+                        onDragEnd={() => setDraggedCardId(null)}
+                        onClick={() => openCard(card)}
+                      >
+                        <div className="job-card-top">
+                          <div>
+                            <strong>{card.address}</strong>
+                            <span>{card.customer.name}</span>
+                          </div>
+                          {card.thumbnail ? <img src={card.thumbnail} alt="" /> : <Home size={24} />}
+                        </div>
+                        <span className="job-shingle">{card.shingle}</span>
+                        <div className="job-card-meta">
+                          <span>{card.squares || '-'} sq</span>
+                          <span>{card.value ? money(card.value) : 'No estimate'}</span>
+                          <span className="crew-avatar">{card.crewInitials}</span>
+                        </div>
+                        <div className="job-card-badges">
+                          <span className={`status-chip status-${card.attention}`}>{card.attentionLabel}</span>
+                          {card.job?.scheduledFor ? <span className="status-chip neutral">{card.job.scheduledFor}</span> : null}
+                        </div>
+                      </button>
+                    )) : <div className="empty kanban-empty">No jobs in this stage. Drag a job here or create a new lead.</div>}
+                  </div>
+                </section>
+              );
+            })}
           </div>
+          <button className="floating-new-job" onClick={() => setView('customers')} aria-label="Create new job">
+            <Plus size={18} /> New Job
+            <span className="onboarding-tip">Start here to add a roofing lead.</span>
+          </button>
         </div>
-      </section>}
+
+        <aside className="roofing-ops-sidebar">
+          <section className="ops-widget">
+            <div className="ops-widget-head">
+              <HardHat size={18} />
+              <h3>Today's Crew Schedule</h3>
+            </div>
+            <div className="crew-schedule-list">
+              {crewSchedule.map(({ crew, jobs, progress }) => (
+                <div key={crew.id} className="crew-schedule-item">
+                  <div className="crew-schedule-top">
+                    <strong>{crew.name}</strong>
+                    <span>{progress}%</span>
+                  </div>
+                  <div className="crew-progress"><span style={{ width: `${progress}%` }} /></div>
+                  {jobs.length ? jobs.map((job) => {
+                    const customer = data.customers.find((entry) => entry.id === job.customerId);
+                    return (
+                      <button key={job.id} className="crew-job-row" onClick={() => onOpenJob(job.id)}>
+                        <span>{streetAddress(customer?.address ?? '')}</span>
+                        <small>{job.scheduledFor || 'Today'} · {job.status === 'In Progress' ? 'On site' : job.status === 'Complete' ? 'Complete' : 'En route'}</small>
+                      </button>
+                    );
+                  }) : <div className="empty compact-empty">No jobs assigned today.</div>}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="ops-widget">
+            <div className="ops-widget-head">
+              <CloudRain size={18} />
+              <h3>3-Day Weather</h3>
+            </div>
+            {weatherLoading ? <div className="empty compact-empty">Loading weather...</div> : weatherError ? <div className="empty compact-empty">{weatherError}</div> : weather ? (
+              <div className="forecast-widget-list">
+                {weather.daily.slice(0, 3).map((day) => {
+                  const rain = (day.rainChance ?? 0) >= 50;
+                  return (
+                    <div key={day.date} className={`forecast-day ${rain ? 'rain-risk' : ''}`}>
+                      <span>{weatherIcon(day.summary)}</span>
+                      <strong>{new Date(day.date).toLocaleDateString(undefined, { weekday: 'short' })}</strong>
+                      <small>{day.highTempC != null ? `${Math.round(day.highTempC)}°C high` : 'Temp n/a'}</small>
+                      {rain ? <em>No Roofing</em> : null}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : <div className="empty compact-empty">Add your service area to see weather alerts.</div>}
+          </section>
+
+          <section className="ops-widget activity-widget">
+            <div className="ops-widget-head">
+              <Users size={18} />
+              <h3>Recent Activity</h3>
+            </div>
+            <div className="activity-feed">
+              {recentActivity.length ? recentActivity.map((item) => (
+                <button key={item.id} className="activity-feed-row" onClick={() => openActivity(item)}>
+                  <strong>{item.title}</strong>
+                  <span>{item.detail}</span>
+                  <small>{item.meta}</small>
+                </button>
+              )) : <div className="empty compact-empty">No recent activity yet.</div>}
+            </div>
+          </section>
+        </aside>
+      </section>
     </>
   );
 };

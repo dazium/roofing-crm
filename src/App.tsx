@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { BarChart3, CalendarDays, Camera, FileText, Home, KanbanSquare, Package, Settings as SettingsIcon, Truck, Users } from 'lucide-react';
 import './App.css';
 import { Dashboard } from './sections/Dashboard';
 import { Customers } from './sections/Customers';
@@ -496,59 +497,28 @@ export default function App() {
 
   const totalPhotos = data.inspections.reduce((sum, inspection) => sum + inspection.photos.length, 0);
 
-  type NavItem = { key: View; label: string; count?: number; child?: boolean };
+  type NavItem = { key: View; label: string; count?: number; child?: boolean; icon: React.ReactNode };
   type NavGroup = { label: string; items: NavItem[] };
   const navGroups: NavGroup[] = [
     {
-      label: 'Workspace',
+      label: 'Roofing',
       items: [
-        { key: 'dashboard', label: 'Workspace' },
-      ],
-    },
-    {
-      label: 'Sales flow',
-      items: [
-        { key: 'customers', label: 'Customers', count: data.customers.length },
-        { key: 'inspect', label: 'Inspection', count: data.inspections.length },
-        { key: 'estimates', label: 'Estimates', count: data.estimates.length },
-        { key: 'photos', label: 'Photos', count: totalPhotos, child: true },
-        { key: 'damages', label: 'Damages', count: data.damages.length, child: true },
-        { key: 'jobs', label: 'Projects', count: data.jobs.length },
-        { key: 'invoices', label: 'Invoices', count: data.invoices.length },
-      ],
-    },
-    {
-      label: 'Operations',
-      items: [
-        { key: 'tasks', label: 'Tasks', count: data.tasks.length },
-        { key: 'calendar', label: 'Calendar', count: data.appointments.length },
-        { key: 'locations', label: 'Locations', count: data.customers.filter((customer) => customer.address.trim()).length },
-      ],
-    },
-    {
-      label: 'Crews',
-      items: [
-        { key: 'crews', label: 'Crews', count: data.crews.length },
-        { key: 'crew-mode', label: 'Crew Mode', count: data.jobs.filter((job) => job.crewId).length },
-      ],
-    },
-    {
-      label: 'Admin',
-      items: [
-        { key: 'settings', label: 'Settings' },
-      ],
-    },
-    {
-      label: 'Analytics',
-      items: [
-        { key: 'reports', label: 'Reports', count: data.invoices.length },
+        { key: 'dashboard', label: 'Dashboard', icon: <Home size={18} /> },
+        { key: 'jobs', label: 'Job Board', count: data.jobs.length, icon: <KanbanSquare size={18} /> },
+        { key: 'estimates', label: 'Estimates', count: data.estimates.length, icon: <FileText size={18} /> },
+        { key: 'customers', label: 'Customers', count: data.customers.length, icon: <Users size={18} /> },
+        { key: 'calendar', label: 'Crew Schedule', count: data.appointments.length, icon: <CalendarDays size={18} /> },
+        { key: 'materials', label: 'Material Orders', count: data.materialPrices.length, icon: <Truck size={18} /> },
+        { key: 'photos', label: 'Photos', count: totalPhotos, icon: <Camera size={18} /> },
+        { key: 'reports', label: 'Reports', count: data.invoices.length, icon: <BarChart3 size={18} /> },
+        { key: 'settings', label: 'Settings', icon: <SettingsIcon size={18} /> },
       ],
     },
   ];
   const navItems = navGroups.flatMap((group) => group.items);
   const activeView = navItems.find((item) => item.key === view);
   const activeViewDetail: Record<View, string> = {
-    dashboard: 'Focused workspace for the selected customer and project.',
+    dashboard: 'Job board, roofing KPIs, crew schedule, weather, and activity.',
     customers: 'Manage homeowners, lead details, and property information.',
     jobs: 'Track projects from scheduled work to close-out.',
     photos: 'Capture before, damage, progress, and after photo documentation.',
@@ -561,7 +531,8 @@ export default function App() {
     locations: 'Map job sites, customer addresses, and active route stops.',
     crews: 'Manage roofing crews and dispatch readiness.',
     'crew-mode': 'Field-focused view for assigned crew jobs.',
-    settings: 'Backups, storage mode, and delivery controls.',
+    materials: 'Shingle inventory, supplier pricing, and material order prep.',
+    settings: 'Backups, material pricing, storage mode, and delivery controls.',
     reports: 'Business analytics and performance metrics for your roofing business.',
   };
   const showWorkspaceChrome = view !== 'settings';
@@ -580,25 +551,19 @@ export default function App() {
     ? navGroups
       .map((group) => ({
         ...group,
-        items: group.items.filter((item) => ['dashboard', 'customers', 'inspect', 'photos', 'damages', 'jobs', 'estimates', 'invoices', 'tasks', 'settings', 'reports'].includes(item.key)),
+        items: group.items,
       }))
       .filter((group) => group.items.length > 0)
     : navGroups;
-  const quickActions: { label: string; view: View; tone?: 'primary' | 'ghost' }[] = [
-    { label: 'Start inspection', view: 'inspect', tone: 'primary' },
-    { label: 'Add photos', view: 'photos', tone: 'ghost' },
-    { label: 'Build estimate', view: 'estimates', tone: 'ghost' },
-    { label: 'Collect payment', view: 'invoices', tone: 'ghost' },
-  ];
 
   return (
     <div className={`page-shell ${simpleView ? 'simple-view' : ''}`}>
       <aside className="sidebar">
         <div className="brand-block">
-          <div className="brand-mark">CRM</div>
+          <div className="brand-mark"><Package size={22} /></div>
           <div>
             <h1>Roofing CRM</h1>
-            <p>Built for roofing workflow, customers, and crews</p>
+            <p>Shingle jobs, crews, estimates, and materials</p>
           </div>
         </div>
         {visibleNavGroups.map((group) => (
@@ -610,7 +575,7 @@ export default function App() {
                 className={`nav-item nav-button ${item.child ? 'nav-child' : ''} ${view === item.key ? 'active' : ''}`}
                 onClick={() => setView(item.key)}
               >
-                <span>{item.label}</span>
+                <span className="nav-label-with-icon">{item.icon}{item.label}</span>
                 {typeof item.count === 'number' ? <strong>{item.count}</strong> : <strong>•</strong>}
               </button>
             ))}
@@ -643,19 +608,6 @@ export default function App() {
               </div>
             </div>
           </div>
-          {view === 'dashboard' && (
-          <div className="quick-action-bar" aria-label="Common actions">
-            {quickActions.map((action) => (
-              <button
-                key={action.label}
-                className={action.tone === 'ghost' ? 'ghost' : ''}
-                onClick={() => setView(action.view)}
-              >
-                {action.label}
-              </button>
-            ))}
-          </div>
-          )}
           <div className="main-nav mobile-nav">
             {visibleNavGroups.map((group) => (
               <div className="mobile-nav-group" key={`mobile-${group.label}`}>
@@ -667,7 +619,7 @@ export default function App() {
                       className={`main-nav-button ${item.child ? 'nav-child' : ''} ${view === item.key ? 'active' : ''}`}
                       onClick={() => setView(item.key)}
                     >
-                      <span>{item.label}</span>
+                      <span className="nav-label-with-icon">{item.icon}{item.label}</span>
                       {typeof item.count === 'number' ? <strong>{item.count}</strong> : <strong>•</strong>}
                     </button>
                   ))}
@@ -729,6 +681,7 @@ export default function App() {
           {view === 'dashboard' && (
             <Dashboard
               data={data}
+              setData={setData}
               selectedCustomerId={selectedCustomerId}
               selectedJobId={selectedJobId}
               setView={setView}
@@ -740,11 +693,7 @@ export default function App() {
                 setView('jobs');
                 selectJob(jobId);
               }}
-              onOpenInspect={() => setView('inspect')}
-              onOpenDamages={() => setView('damages')}
               onOpenEstimates={() => setView('estimates')}
-              onOpenInvoices={() => setView('invoices')}
-              onOpenTasks={() => setView('tasks')}
             />
           )}
 
@@ -866,7 +815,7 @@ export default function App() {
             />
           )}
 
-          {view === 'settings' && (
+          {(view === 'settings' || view === 'materials') && (
             <Settings
               data={data}
               setData={setData}

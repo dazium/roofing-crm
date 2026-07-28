@@ -1,6 +1,6 @@
 export type LeadStatus = 'New Lead' | 'Contacted' | 'Inspection Scheduled' | 'Estimate Sent' | 'Won' | 'Lost'
 export type JobStatus = 'Scheduled' | 'In Progress' | 'Awaiting Final Review' | 'Complete' | 'Invoiced' | 'Paid'
-export type View = 'dashboard' | 'customers' | 'inspect' | 'jobs' | 'photos' | 'damages' | 'estimates' | 'invoices' | 'tasks' | 'calendar' | 'locations' | 'crews' | 'crew-mode' | 'settings' | 'reports'
+export type View = 'dashboard' | 'customers' | 'inspect' | 'jobs' | 'photos' | 'damages' | 'estimates' | 'invoices' | 'tasks' | 'calendar' | 'locations' | 'crews' | 'crew-mode' | 'materials' | 'settings' | 'reports'
 export type DamageType = 'Leak' | 'Shingle Damage' | 'Flashing' | 'Ventilation' | 'Animal Damage' | 'Storm Damage'
 export type Urgency = 'Low' | 'Medium' | 'High' | 'Emergency'
 export type PhotoCategory = 'Before' | 'Damage' | 'Progress' | 'After'
