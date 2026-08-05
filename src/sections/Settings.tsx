@@ -578,13 +578,6 @@ export const Settings: React.FC<SettingsProps> = ({
               accept="text/csv" 
               onChange={handleImportCustomers} 
             />
-            <input 
-              ref={importInputRef} 
-              className="hidden-input" 
-              type="file" 
-              accept="application/json" 
-              onChange={handleImport} 
-            />
           </div>
         </div>
       </div>

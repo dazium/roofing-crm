@@ -31,6 +31,7 @@ export type MaterialPrice = {
 }
 
 const DB_NAME = 'roofingcrm'
+const STORAGE_META_KEY = 'roofingcrm.v8.meta'
 const STATE_TABLE_SQL = `
   CREATE TABLE IF NOT EXISTS app_state (
     id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -124,24 +125,49 @@ async function saveToSqlite(data: AppData) {
   )
 }
 
+function loadLocalStorageMeta(): StorageMeta {
+  const raw = localStorage.getItem(STORAGE_META_KEY)
+  if (!raw) {
+    return {}
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<StorageMeta>
+    return {
+      lastSaveAt: typeof parsed.lastSaveAt === 'string' ? parsed.lastSaveAt : null,
+    }
+  } catch {
+    return {}
+  }
+}
+
+function saveLocalStorageMeta(meta: StorageMeta) {
+  localStorage.setItem(STORAGE_META_KEY, JSON.stringify(meta))
+}
+
 function loadFromLocalStorage(): AppData {
   const raw = localStorage.getItem(STORAGE_KEY)
   if (!raw) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(seedData))
-    return seedData
+    const initialData = seedData
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(initialData))
+    saveLocalStorageMeta({ lastSaveAt: new Date().toISOString() })
+    return initialData
   }
 
   try {
     const parsed = JSON.parse(raw) as Partial<AppData>
     return normalizeAppData(parsed)
   } catch {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(seedData))
-    return seedData
+    const initialData = seedData
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(initialData))
+    saveLocalStorageMeta({ lastSaveAt: new Date().toISOString() })
+    return initialData
   }
 }
 
 function saveToLocalStorage(data: AppData) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+  saveLocalStorageMeta({ lastSaveAt: new Date().toISOString() })
 }
 
 export async function loadAppData(): Promise<StoredAppDataResult> {
@@ -206,6 +232,10 @@ export async function getStorageMeta(): Promise<StorageMeta> {
     } catch {
       return {}
     }
+  }
+
+  if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
+    return loadLocalStorageMeta()
   }
 
   return {}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BarChart3, CalendarDays, Camera, FileText, Home, KanbanSquare, Package, Settings as SettingsIcon, Truck, Users } from 'lucide-react';
+import { BarChart3, CalendarDays, Camera, FileText, Home, KanbanSquare, MapPin, Package, Settings as SettingsIcon, Truck, Users, Clock3, ClipboardPlus, ClipboardCheck, PackageCheck, FileSignature, ChartNoAxesCombined } from 'lucide-react';
 import './App.css';
 import { Dashboard } from './sections/Dashboard';
 import { Customers } from './sections/Customers';
@@ -16,6 +16,12 @@ import { Photos } from './sections/Photos';
 import { CrewMode } from './sections/CrewMode';
 import { Locations } from './sections/Locations';
 import { Reports } from './sections/Reports';
+import { Timesheets } from './sections/Timesheets';
+import { ChangeOrders } from './sections/ChangeOrders';
+import { ProductionPlan } from './sections/ProductionPlan';
+import { MaterialFulfillment } from './sections/MaterialFulfillment';
+import { Approvals } from './sections/Approvals';
+import { Profitability } from './sections/Profitability';
 import { seedData } from './data';
 import { normalizeAppData, validateAppDataImport } from './normalization';
 import { defaultEstimate, optimizeInspectionPhoto, uid, validateInspectionPhotoFile } from './lib';
@@ -504,13 +510,20 @@ export default function App() {
       label: 'Roofing',
       items: [
         { key: 'dashboard', label: 'Dashboard', icon: <Home size={18} /> },
-        { key: 'jobs', label: 'Job Board', count: data.jobs.length, icon: <KanbanSquare size={18} /> },
+        { key: 'jobs', label: 'Projects', count: data.jobs.length, icon: <KanbanSquare size={18} /> },
         { key: 'estimates', label: 'Estimates', count: data.estimates.length, icon: <FileText size={18} /> },
         { key: 'customers', label: 'Customers', count: data.customers.length, icon: <Users size={18} /> },
-        { key: 'calendar', label: 'Crew Schedule', count: data.appointments.length, icon: <CalendarDays size={18} /> },
-        { key: 'materials', label: 'Material Orders', count: data.materialPrices.length, icon: <Truck size={18} /> },
+        { key: 'calendar', label: 'Calendar', count: data.appointments.length, icon: <CalendarDays size={18} /> },
+        { key: 'materials', label: 'Materials', count: data.materialPrices.length, icon: <Truck size={18} /> },
+        { key: 'locations', label: 'Route Optimization', count: data.customers.filter((customer) => customer.address.trim()).length, icon: <MapPin size={18} /> },
         { key: 'photos', label: 'Photos', count: totalPhotos, icon: <Camera size={18} /> },
-        { key: 'reports', label: 'Reports', count: data.invoices.length, icon: <BarChart3 size={18} /> },
+        { key: 'reports', label: 'Financial Dashboard', count: data.invoices.length, icon: <BarChart3 size={18} /> },
+        { key: 'timesheets', label: 'Timesheets', icon: <Clock3 size={18} /> },
+        { key: 'change-orders', label: 'Change Orders', icon: <ClipboardPlus size={18} /> },
+        { key: 'production', label: 'Production Plan', icon: <ClipboardCheck size={18} /> },
+        { key: 'fulfillment', label: 'Material Fulfillment', icon: <PackageCheck size={18} /> },
+        { key: 'approvals', label: 'Approvals & Docs', icon: <FileSignature size={18} /> },
+        { key: 'profitability', label: 'Profitability', icon: <ChartNoAxesCombined size={18} /> },
         { key: 'settings', label: 'Settings', icon: <SettingsIcon size={18} /> },
       ],
     },
@@ -528,12 +541,18 @@ export default function App() {
     invoices: 'Track invoices, payments, and outstanding balances.',
     tasks: 'Track follow-ups, office prep, and project action items.',
     calendar: 'Schedule inspections, estimates, and job starts.',
-    locations: 'Map job sites, customer addresses, and active route stops.',
+    locations: 'Plan routes, crew stops, and customer site visits for optimal field efficiency.',
     crews: 'Manage roofing crews and dispatch readiness.',
     'crew-mode': 'Field-focused view for assigned crew jobs.',
     materials: 'Shingle inventory, supplier pricing, and material order prep.',
     settings: 'Backups, material pricing, storage mode, and delivery controls.',
-    reports: 'Business analytics and performance metrics for your roofing business.',
+    reports: 'Financial performance, revenue, invoice status, and business KPIs for your roofing business.',
+    timesheets: 'Review and approve crew hours for the current week.',
+    'change-orders': 'Track scope changes and customer-approved job adjustments.',
+    production: 'Run the job from approved scope through field completion.',
+    fulfillment: 'Order, receive, and stage materials for active jobs.',
+    approvals: 'Track customer approvals, signatures, and job documents.',
+    profitability: 'Compare job revenue, labor, materials, and margin.',
   };
   const showWorkspaceChrome = view !== 'settings';
   const workflowSteps: { key: View; label: string; caption: string }[] = [
@@ -545,7 +564,7 @@ export default function App() {
     { key: 'tasks', label: '6. Follow-up', caption: data.tasks.find((task) => task.jobId === selectedJobId || (!selectedJobId && task.customerId === selectedCustomerId)) ? 'Tasks tracked' : 'Add next actions' },
     { key: 'locations', label: '7. Route', caption: selectedCustomer?.address ?? 'Map the route' },
     { key: 'settings', label: 'Settings', caption: data.companyProfile.name.trim() || 'Set company profile' },
-    { key: 'reports', label: '8. Analytics', caption: `${data.invoices.length} invoices tracked` },
+    { key: 'reports', label: '8. Financials', caption: `${data.invoices.length} invoices tracked` },
   ];
   const visibleNavGroups = simpleView
     ? navGroups
@@ -835,6 +854,13 @@ export default function App() {
               setView={setView}
             />
           )}
+
+          {view === 'timesheets' && <Timesheets data={data} onUpdate={setData} />}
+          {view === 'change-orders' && <ChangeOrders data={data} onUpdate={setData} selectedJobId={selectedJobId} selectJob={selectJob} />}
+          {view === 'production' && <ProductionPlan data={data} onUpdate={setData} selectedJobId={selectedJobId} selectJob={selectJob} />}
+          {view === 'fulfillment' && <MaterialFulfillment data={data} onUpdate={setData} selectedJobId={selectedJobId} selectJob={selectJob} />}
+          {view === 'approvals' && <Approvals data={data} onUpdate={setData} selectedJobId={selectedJobId} selectJob={selectJob} />}
+          {view === 'profitability' && <Profitability data={data} selectedJobId={selectedJobId} selectJob={selectJob} />}
 
           {view === 'calendar' && (
             <Calendar

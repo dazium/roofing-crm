@@ -1,6 +1,6 @@
 export type LeadStatus = 'New Lead' | 'Contacted' | 'Inspection Scheduled' | 'Estimate Sent' | 'Won' | 'Lost'
 export type JobStatus = 'Scheduled' | 'In Progress' | 'Awaiting Final Review' | 'Complete' | 'Invoiced' | 'Paid'
-export type View = 'dashboard' | 'customers' | 'inspect' | 'jobs' | 'photos' | 'damages' | 'estimates' | 'invoices' | 'tasks' | 'calendar' | 'locations' | 'crews' | 'crew-mode' | 'materials' | 'settings' | 'reports'
+export type View = 'dashboard' | 'customers' | 'inspect' | 'jobs' | 'photos' | 'damages' | 'estimates' | 'invoices' | 'tasks' | 'calendar' | 'locations' | 'crews' | 'crew-mode' | 'materials' | 'settings' | 'reports' | 'timesheets' | 'change-orders' | 'production' | 'fulfillment' | 'approvals' | 'profitability'
 export type DamageType = 'Leak' | 'Shingle Damage' | 'Flashing' | 'Ventilation' | 'Animal Damage' | 'Storm Damage'
 export type Urgency = 'Low' | 'Medium' | 'High' | 'Emergency'
 export type PhotoCategory = 'Before' | 'Damage' | 'Progress' | 'After'
@@ -23,7 +23,7 @@ export type CompanyProfile = {
 
 export type Customer = { id: string; name: string; phone: string; email: string; address: string; notes: string; leadStatus: LeadStatus; source: string }
 export type JobPriority = 'Low' | 'Normal' | 'High'
-export type Job = { id: string; customerId: string; title: string; status: JobStatus; priority: JobPriority; scheduledFor: string; notes: string; crewId?: string; createdAt: string }
+export type Job = { id: string; customerId: string; title: string; status: JobStatus; priority: JobPriority; scheduledFor: string; notes: string; crewId?: string; productionChecklist?: Record<string, boolean>; approvals?: { estimate?: string; contract?: string; completion?: string }; createdAt: string }
 export type EstimateLineItem = { id: string; title: string; quantity: number; unit: string; unitPrice: number; total: number }
 export type MaterialPriceSetting = { id: string; label: string; category: MaterialCategory; unit: MaterialUnit; price: number; supplier: string; updatedAt: string }
 export type MaterialPriceHistoryEntry = {
@@ -196,14 +196,24 @@ export type AppData = {
   damages: DamageRecord[];
   estimateVersions: EstimateVersion[];
   timeLogs: TimeLog[];
+  changeOrders?: ChangeOrder[];
+  materialOrders?: MaterialOrder[];
 }
+export type MaterialOrderStatus = 'Requested' | 'Ordered' | 'Delivered' | 'Staged'
+export type MaterialOrder = { id: string; jobId: string; material: string; quantity: number; unit: string; supplier: string; deliveryDate?: string; status: MaterialOrderStatus; createdAt: string }
+export type ChangeOrderStatus = 'Draft' | 'Pending Approval' | 'Approved' | 'Rejected'
+export type ChangeOrder = { id: string; jobId: string; title: string; reason: string; amount: number; status: ChangeOrderStatus; createdAt: string; notes?: string }
 export type TimeEntry = {
   id: string;
   crewId: string;
+  memberId?: string;
   date: string; // ISO date string (YYYY-MM-DD)
   punchInTime: string; // ISO timestamp
   punchOutTime?: string; // ISO timestamp (optional, null if still clocked in)
   durationMinutes?: number; // calculated duration
+  breakMinutes?: number;
+  breakStartTime?: string;
+  approved?: boolean;
   notes?: string;
 }
 

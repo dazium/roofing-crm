@@ -7,45 +7,69 @@ interface ReportsProps {
   setView: React.Dispatch<React.SetStateAction<View>>;
 }
 
+type ReportMetric = {
+  title: string;
+  subtitle: string;
+  value: string | number;
+};
+
+type SummaryItem = {
+  label: string;
+  count: number;
+  amount?: number;
+};
+
 export const Reports: React.FC<ReportsProps> = ({ data, setView }) => {
-  // Calculate various metrics and insights
   const stats = useMemo(() => {
-    // Revenue metrics
+    const today = new Date().toISOString().slice(0, 10);
+    const monthKey = new Date().toISOString().slice(0, 7);
+
+    const totalInvoiceAmount = data.invoices.reduce((sum, invoice) => sum + invoice.amount, 0);
     const totalRevenue = data.invoices.reduce((sum, invoice) => sum + invoice.paidAmount, 0);
-    const pendingRevenue = data.invoices.reduce((sum, invoice) => sum + invoice.balanceDue, 0);
+    const openBalance = data.invoices.reduce((sum, invoice) => sum + invoice.balanceDue, 0);
     const overdueAmount = data.invoices
-      .filter(invoice => invoice.status === 'Overdue')
+      .filter((invoice) => invoice.status === 'Overdue' || (invoice.dueDate && invoice.dueDate < today && invoice.status !== 'Paid' && invoice.status !== 'Cancelled'))
       .reduce((sum, invoice) => sum + invoice.balanceDue, 0);
-    
-    // Job metrics
+    const collectionRate = totalInvoiceAmount > 0 ? Math.round((totalRevenue / totalInvoiceAmount) * 100) : 0;
+    const revenueMTD = data.invoices
+      .filter((invoice) => invoice.paidDate?.startsWith(monthKey) || invoice.issuedDate?.startsWith(monthKey))
+      .reduce((sum, invoice) => sum + invoice.paidAmount, 0);
+
     const totalJobs = data.jobs.length;
-    const completedJobs = data.jobs.filter(job => job.status === 'Complete' || job.status === 'Paid').length;
-    const inProgressJobs = data.jobs.filter(job => job.status === 'In Progress' || job.status === 'Scheduled').length;
-    
-    // Customer metrics
+    const completedJobs = data.jobs.filter((job) => job.status === 'Complete' || job.status === 'Paid').length;
+    const inProgressJobs = data.jobs.filter((job) => job.status === 'In Progress' || job.status === 'Scheduled').length;
+
     const totalCustomers = data.customers.length;
-    const wonCustomers = data.customers.filter(customer => customer.leadStatus === 'Won').length;
-    const lostCustomers = data.customers.filter(customer => customer.leadStatus === 'Lost').length;
-    
-    // Material costs
+    const wonCustomers = data.customers.filter((customer) => customer.leadStatus === 'Won').length;
+    const lostCustomers = data.customers.filter((customer) => customer.leadStatus === 'Lost').length;
+
     const totalMaterialCost = data.estimates.reduce((sum, estimate) => sum + estimate.materialCost, 0);
     const avgJobValue = totalJobs > 0 ? totalRevenue / totalJobs : 0;
-    
-    // Recent activity
+
+    const openEstimateJobs = data.estimates.filter((estimate) => {
+      const job = data.jobs.find((entry) => entry.id === estimate.jobId);
+      return !job || !['Complete', 'Paid'].includes(job.status);
+    });
+    const openPipelineValue = openEstimateJobs.reduce((sum, estimate) => sum + estimate.totalPrice, 0);
+    const openPipelineCount = openEstimateJobs.length;
+
     const recentInspections = data.inspections
       .slice()
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 5);
-    
+
     const recentJobs = data.jobs
       .slice()
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 5);
-    
+
     return {
+      totalInvoiceAmount,
       totalRevenue,
-      pendingRevenue,
+      openBalance,
       overdueAmount,
+      collectionRate,
+      revenueMTD,
       totalJobs,
       completedJobs,
       inProgressJobs,
@@ -54,12 +78,112 @@ export const Reports: React.FC<ReportsProps> = ({ data, setView }) => {
       lostCustomers,
       totalMaterialCost,
       avgJobValue,
+      openPipelineValue,
+      openPipelineCount,
       recentInspections,
-      recentJobs
+      recentJobs,
     };
   }, [data]);
 
-  const handleViewChange = (view: View) => () => setView(view);
+  const financialMetrics: ReportMetric[] = [
+    { title: 'Total Invoiced', subtitle: 'All billing issued to customers', value: money(stats.totalInvoiceAmount) },
+    { title: 'Total Revenue', subtitle: 'Payments received to date', value: money(stats.totalRevenue) },
+    { title: 'Open AR', subtitle: 'Outstanding invoice balances', value: money(stats.openBalance) },
+    { title: 'Collection Rate', subtitle: 'Paid value vs invoiced value', value: `${stats.collectionRate}%` },
+  ];
+
+  const pipelineMetrics: ReportMetric[] = [
+    { title: 'Pipeline Value', subtitle: 'Open proposals for active jobs', value: money(stats.openPipelineValue) },
+    { title: 'Open Proposals', subtitle: 'Estimates waiting on approval', value: stats.openPipelineCount },
+    { title: 'Revenue MTD', subtitle: 'Payments received this month', value: money(stats.revenueMTD) },
+    { title: 'Overdue Balance', subtitle: 'Past due amounts', value: money(stats.overdueAmount) },
+  ];
+
+  const projectMetrics: ReportMetric[] = [
+    { title: 'Total Jobs', subtitle: 'All projects tracked in the system', value: stats.totalJobs },
+    { title: 'Completed Jobs', subtitle: 'Finished and paid projects', value: stats.completedJobs },
+    { title: 'Active Jobs', subtitle: 'Scheduled and in-progress work', value: stats.inProgressJobs },
+    { title: 'Average Job Value', subtitle: 'Average revenue per project', value: money(stats.avgJobValue) },
+  ];
+
+  const customerMetrics: ReportMetric[] = [
+    { title: 'Total Customers', subtitle: 'All customer records in the system', value: stats.totalCustomers },
+    { title: 'Won Customers', subtitle: 'Successfully converted leads', value: stats.wonCustomers },
+    { title: 'Lost Customers', subtitle: 'Leads that did not convert', value: stats.lostCustomers },
+    { title: 'Material Cost', subtitle: 'Estimated material spend', value: money(stats.totalMaterialCost) },
+  ];
+
+  const invoiceSummary = useMemo<SummaryItem[]>(() => {
+    const map = new Map<string, SummaryItem>();
+    data.invoices.forEach((invoice) => {
+      const existing = map.get(invoice.status);
+      if (existing) {
+        existing.count += 1;
+        existing.amount = (existing.amount ?? 0) + invoice.paidAmount;
+      } else {
+        map.set(invoice.status, { label: invoice.status, count: 1, amount: invoice.paidAmount });
+      }
+    });
+    return Array.from(map.values());
+  }, [data.invoices]);
+
+  const jobSummary = useMemo<SummaryItem[]>(() => {
+    const map = new Map<string, SummaryItem>();
+    data.jobs.forEach((job) => {
+      const existing = map.get(job.status);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        map.set(job.status, { label: job.status, count: 1 });
+      }
+    });
+    return Array.from(map.values());
+  }, [data.jobs]);
+
+  const timelineItems = useMemo(() => [
+    ...stats.recentInspections.map((inspection) => ({
+      id: inspection.id,
+      type: 'inspection' as const,
+      title: `Roof Inspection: ${inspection.roofType}`,
+      detail: `${inspection.damageType} damage • ${inspection.measurements.squares} squares`,
+      meta: new Date(inspection.createdAt).toLocaleDateString(),
+      action: () => setView('inspect'),
+    })),
+    ...stats.recentJobs.map((job) => ({
+      id: job.id,
+      type: 'job' as const,
+      title: `New Project: ${job.title}`,
+      detail: `${job.status} • ${job.priority} priority`,
+      meta: new Date(job.createdAt).toLocaleDateString(),
+      action: () => setView('jobs'),
+    })),
+  ].sort((a, b) => new Date(b.meta).getTime() - new Date(a.meta).getTime()).slice(0, 8), [stats.recentInspections, stats.recentJobs, setView]);
+
+  const renderMetrics = (cards: ReportMetric[]) => (
+    <div className="stats-grid reports-overview-grid">
+      {cards.map((card) => (
+        <div className="card stat-card" key={card.title}>
+          <div className="section-head">
+            <h3>{card.title}</h3>
+            <span>{card.subtitle}</span>
+          </div>
+          <div className="stat-value">{card.value}</div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderSummary = (items: SummaryItem[]) => (
+    <div className="linked-record-list">
+      {items.map((item) => (
+        <button key={item.label} className="linked-record-row linked-record-action">
+          <strong>{item.label}</strong>
+          <span>{item.count} {item.amount !== undefined ? 'invoices' : 'jobs'}</span>
+          {item.amount !== undefined ? <small>{money(item.amount)}</small> : null}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <section className="page-content">
@@ -67,161 +191,37 @@ export const Reports: React.FC<ReportsProps> = ({ data, setView }) => {
         <div className="page-header">
           <div>
             <span className="eyebrow">Roofing CRM</span>
-            <h2>Reports & Insights</h2>
-            <p>Business analytics and performance metrics for your roofing business</p>
+            <h2>Financial Dashboard</h2>
+            <p>Monitor invoice revenue, job margins, and the financial health of your roofing business.</p>
           </div>
         </div>
       </div>
 
-      <div className="stats-grid reports-overview-grid">
-        <div className="card stat-card">
-          <div className="section-head">
-            <h3>Total Revenue</h3>
-            <span>All-time invoiced payments received</span>
-          </div>
-          <div className="stat-value">{money(stats.totalRevenue)}</div>
-        </div>
-        
-        <div className="card stat-card">
-          <div className="section-head">
-            <h3>Pending Revenue</h3>
-            <span>Outstanding invoice balances</span>
-          </div>
-          <div className="stat-value">{money(stats.pendingRevenue)}</div>
-        </div>
-        
-        <div className="card stat-card">
-          <div className="section-head">
-            <h3>Overdue Amount</h3>
-            <span>Past due invoice balances</span>
-          </div>
-          <div className="stat-value">{money(stats.overdueAmount)}</div>
-        </div>
-        
-        <div className="card stat-card">
-          <div className="section-head">
-            <h3>Average Job Value</h3>
-            <span>Average revenue per completed job</span>
-          </div>
-          <div className="stat-value">{money(stats.avgJobValue)}</div>
-        </div>
-      </div>
-
-      <div className="stats-grid reports-overview-grid">
-        <div className="card stat-card">
-          <div className="section-head">
-            <h3>Total Jobs</h3>
-            <span>All projects tracked in the system</span>
-          </div>
-          <div className="stat-value">{stats.totalJobs}</div>
-        </div>
-        
-        <div className="card stat-card">
-          <div className="section-head">
-            <h3>Completed Jobs</h3>
-            <span>Finished and paid projects</span>
-          </div>
-          <div className="stat-value">{stats.completedJobs}</div>
-        </div>
-        
-        <div className="card stat-card">
-          <div className="section-head">
-            <h3>In Progress Jobs</h3>
-            <span>Scheduled and active projects</span>
-          </div>
-          <div className="stat-value">{stats.inProgressJobs}</div>
-        </div>
-        
-        <div className="card stat-card">
-          <div className="section-head">
-            <h3>Conversion Rate</h3>
-            <span>Won vs total customer leads</span>
-          </div>
-          <div className="stat-value">
-            {stats.totalCustomers > 0 
-              ? `${Math.round((stats.wonCustomers / stats.totalCustomers) * 100)}%`
-              : '0%'}
-          </div>
-        </div>
-      </div>
-
-      <div className="stats-grid reports-overview-grid">
-        <div className="card stat-card">
-          <div className="section-head">
-            <h3>Total Customers</h3>
-            <span>All customer records in database</span>
-          </div>
-          <div className="stat-value">{stats.totalCustomers}</div>
-        </div>
-        
-        <div className="card stat-card">
-          <div className="section-head">
-            <h3>Won Customers</h3>
-            <span>Successfully converted leads</span>
-          </div>
-          <div className="stat-value">{stats.wonCustomers}</div>
-        </div>
-        
-        <div className="card stat-card">
-          <div className="section-head">
-            <h3>Lost Customers</h3>
-            <span>Leads that did not convert</span>
-          </div>
-          <div className="stat-value">{stats.lostCustomers}</div>
-        </div>
-        
-        <div className="card stat-card">
-          <div className="section-head">
-            <h3>Material Costs</h3>
-            <span>Total estimated material expenses</span>
-          </div>
-          <div className="stat-value">{money(stats.totalMaterialCost)}</div>
-        </div>
-      </div>
+      {renderMetrics(financialMetrics)}
+      {renderMetrics(pipelineMetrics)}
+      {renderMetrics(projectMetrics)}
+      {renderMetrics(customerMetrics)}
 
       <section className="card">
         <div className="section-head">
           <h3>Recent Activity</h3>
           <span>Latest inspections and job creations</span>
         </div>
-        
         <div className="timeline-list">
-          {[
-            ...stats.recentInspections.map((inspection) => ({
-              type: 'inspection' as const,
-              title: `Roof Inspection: ${inspection.roofType}`,
-              detail: `${inspection.damageType} damage • ${inspection.measurements.squares} squares`,
-              meta: new Date(inspection.createdAt).toLocaleDateString(),
-              customerId: inspection.customerId,
-              action: handleViewChange('inspect'),
-            })),
-            ...stats.recentJobs.map((job) => ({
-              type: 'job' as const,
-              title: `New Project: ${job.title}`,
-              detail: `${job.status} • ${job.priority} priority`,
-              meta: new Date(job.createdAt).toLocaleDateString(),
-              jobId: job.id,
-              action: handleViewChange('jobs'),
-            })),
-          ]
-            .sort((a, b) => new Date(b.meta).getTime() - new Date(a.meta).getTime())
-            .slice(0, 8)
-            .map((item, index) => (
-              <button
-                key={`${item.type}-${index}`}
-                className={`timeline-item timeline-action timeline-${item.type}`}
-                onClick={item.action}
-              >
-                <div className="timeline-dot" />
-                <div className="timeline-content">
-                  <strong>{item.title}</strong>
-                  <span>{item.detail}</span>
-                  <small>{item.meta}</small>
-                </div>
-              </button>
-            ))}
-          
-          {stats.recentInspections.length === 0 && stats.recentJobs.length === 0 && (
+          {timelineItems.length ? timelineItems.map((item) => (
+            <button
+              key={item.id}
+              className={`timeline-item timeline-action timeline-${item.type}`}
+              onClick={item.action}
+            >
+              <div className="timeline-dot" />
+              <div className="timeline-content">
+                <strong>{item.title}</strong>
+                <span>{item.detail}</span>
+                <small>{item.meta}</small>
+              </div>
+            </button>
+          )) : (
             <div className="empty">No recent activity yet.</div>
           )}
         </div>
@@ -232,51 +232,21 @@ export const Reports: React.FC<ReportsProps> = ({ data, setView }) => {
           <h3>Financial Trends</h3>
           <span>Revenue and payment patterns</span>
         </div>
-        
+
         <div className="card">
           <div className="section-head">
             <h3>Payment Status Distribution</h3>
             <span>Breakdown of invoice statuses</span>
           </div>
-          <div className="linked-record-list">
-            {[...new Set(data.invoices.map(invoice => invoice.status))].map(status => {
-              const count = data.invoices.filter(inv => inv.status === status).length;
-              const amount = data.invoices
-                .filter(inv => inv.status === status)
-                .reduce((sum, inv) => sum + inv.paidAmount, 0);
-              return (
-                <button 
-                  key={`status-${status}`} 
-                  className="linked-record-row linked-record-action"
-                >
-                  <strong>{status}</strong>
-                  <span>{count} invoices</span>
-                  <small>{money(amount)} collected</small>
-                </button>
-              );
-            })}
-          </div>
+          {renderSummary(invoiceSummary)}
         </div>
-        
+
         <div className="card">
           <div className="section-head">
             <h3>Job Status Distribution</h3>
             <span>Current state of all projects</span>
           </div>
-          <div className="linked-record-list">
-            {[...new Set(data.jobs.map(job => job.status))].map(status => {
-              const count = data.jobs.filter(job => job.status === status).length;
-              return (
-                <button 
-                  key={`job-status-${status}`} 
-                  className="linked-record-row linked-record-action"
-                >
-                  <strong>{status}</strong>
-                  <span>{count} jobs</span>
-                </button>
-              );
-            })}
-          </div>
+          {renderSummary(jobSummary)}
         </div>
       </section>
     </section>

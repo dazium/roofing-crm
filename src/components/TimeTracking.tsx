@@ -14,6 +14,7 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
   onUpdate,
 }) => {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [selectedMemberId, setSelectedMemberId] = useState('');
 
   const today = new Date().toISOString().split('T')[0];
   const todayLog = data.timeLogs.find(
@@ -21,6 +22,7 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
   );
   const activeEntry = todayLog?.entries.find((entry) => !entry.punchOutTime);
   const isRunning = Boolean(activeEntry);
+  const onBreak = Boolean(activeEntry?.breakStartTime);
 
   // Timer effect
   useEffect(() => {
@@ -31,7 +33,8 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
     const punchIn = new Date(activeEntry.punchInTime);
 
     const interval = setInterval(() => {
-      const diffMs = Date.now() - punchIn.getTime();
+      const breakMs = activeEntry.breakStartTime ? Date.now() - new Date(activeEntry.breakStartTime).getTime() : 0;
+      const diffMs = Date.now() - punchIn.getTime() - breakMs - (activeEntry.breakMinutes || 0) * 60000;
       setElapsedSeconds(Math.floor(diffMs / 1000));
     }, 1000);
 
@@ -52,12 +55,13 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
   }
 
   function punchIn() {
-    if (!selectedCrewId) return;
+    if (!selectedCrewId || !selectedMemberId) return;
     const punchInTime = new Date().toISOString();
 
     const newEntry: TimeEntry = {
       id: uid(),
       crewId: selectedCrewId,
+      memberId: selectedMemberId,
       date: today,
       punchInTime,
     };
@@ -94,13 +98,19 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
 
     const punchOutTime = new Date().toISOString();
     const punchInTime = new Date(activeEntry.punchInTime);
-    const durationMs = new Date(punchOutTime).getTime() - punchInTime.getTime();
+    const currentBreakMinutes = activeEntry.breakStartTime
+      ? Math.round((Date.now() - new Date(activeEntry.breakStartTime).getTime()) / 60000)
+      : 0;
+    const totalBreakMinutes = (activeEntry.breakMinutes || 0) + currentBreakMinutes;
+    const durationMs = new Date(punchOutTime).getTime() - punchInTime.getTime() - totalBreakMinutes * 60000;
     const durationMinutes = Math.round(durationMs / 60000);
 
     const updatedEntry: TimeEntry = {
       ...activeEntry,
       punchOutTime,
       durationMinutes,
+      breakMinutes: totalBreakMinutes,
+      breakStartTime: undefined,
     };
 
     const updatedEntries = todayLog.entries.map((entry) =>
@@ -122,11 +132,33 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
     });
   }
 
+  function toggleBreak() {
+    if (!activeEntry || !todayLog) return;
+    const now = new Date().toISOString();
+    const updatedEntry = onBreak
+      ? { ...activeEntry, breakStartTime: undefined, breakMinutes: (activeEntry.breakMinutes || 0) + Math.round((Date.now() - new Date(activeEntry.breakStartTime!).getTime()) / 60000) }
+      : { ...activeEntry, breakStartTime: now };
+    onUpdate({ ...data, timeLogs: data.timeLogs.map((log) => log.id === todayLog.id ? { ...log, entries: log.entries.map((entry) => entry.id === activeEntry.id ? updatedEntry : entry) } : log) });
+  }
+
+  const crew = data.crews.find((item) => item.id === selectedCrewId);
+  const activeMember = crew?.members.find((member) => member.id === activeEntry?.memberId);
+
   const totalDailyMinutes = todayLog?.totalMinutes || 0;
   const activeDuration = activeEntry ? elapsedSeconds : 0;
 
   return (
     <div className="time-tracking-panel">
+      <div className="section-head">
+        <div><h3>Time clock</h3><span>Track each crew member's site time</span></div>
+        {activeMember ? <span className="active-badge">{activeMember.name} active</span> : null}
+      </div>
+      {!isRunning ? (
+        <label className="field field-compact"><span>Crew member</span><select value={selectedMemberId} onChange={(event) => setSelectedMemberId(event.target.value)}>
+          <option value="">Select who is starting</option>
+          {crew?.members.map((member) => <option key={member.id} value={member.id}>{member.name}{member.role ? ` · ${member.role}` : ''}</option>)}
+        </select></label>
+      ) : null}
       <div className="time-display">
         <div className="current-session">
           <span className="label">Current Session</span>
@@ -145,14 +177,12 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
           <button
             className="punch-button punch-in"
             onClick={punchIn}
-            disabled={!selectedCrewId}
+            disabled={!selectedCrewId || !selectedMemberId}
           >
             Punch In
           </button>
         ) : (
-          <button className="punch-button punch-out" onClick={punchOut}>
-            Punch Out
-          </button>
+          <><button className={`punch-button ${onBreak ? 'punch-in' : 'ghost'}`} onClick={toggleBreak}>{onBreak ? 'Resume Work' : 'Start Break'}</button><button className="punch-button punch-out" onClick={punchOut}>Punch Out</button></>
         )}
       </div>
 
@@ -187,9 +217,7 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
                   )}
                 </div>
                 <div className="entry-duration">
-                  {entry.durationMinutes
-                    ? formatDuration(entry.durationMinutes)
-                    : 'In progress...'}
+                    {entry.durationMinutes ? formatDuration(entry.durationMinutes) : 'In progress...'}{entry.memberId ? ` · ${crew?.members.find((member) => member.id === entry.memberId)?.name ?? 'Crew member'}` : ''}
                 </div>
               </div>
             ))}

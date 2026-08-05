@@ -1,11 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Camera, CheckCircle2, Cloud, CloudRain, DollarSign, FileText, HardHat, Home, Package, Plus, Search, Sun, TrendingDown, TrendingUp, Users } from 'lucide-react';
 import type { AppData, Customer, Job, JobStatus, LeadStatus, View } from '../types';
-import { money } from '../lib';
+import { money, uid } from '../lib';
 import { buildDashboardActivity, type DashboardActivityItem } from '../appLookups';
 import { fetchJobWeather, type JobWeatherSnapshot } from '../weather';
 
 type PipelineStage = 'New Lead' | 'Inspection Scheduled' | 'Estimate Sent' | 'Approved' | 'Production Scheduled' | 'In Progress' | 'Complete';
+
+type DashboardCustomerForm = {
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  source: string;
+  notes: string;
+  leadStatus: LeadStatus;
+};
 
 type PipelineCard = {
   id: string;
@@ -104,6 +114,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [jobSearch, setJobSearch] = useState('');
   const [crewFilter, setCrewFilter] = useState('all');
   const [shingleFilter, setShingleFilter] = useState('all');
+  const [customerForm, setCustomerForm] = useState<DashboardCustomerForm>({
+    name: '',
+    phone: '',
+    email: '',
+    address: '',
+    source: 'Facebook',
+    notes: '',
+    leadStatus: 'New Lead',
+  });
 
   const selectedCustomer = useMemo(
     () => data.customers.find((customer) => customer.id === selectedCustomerId) ?? data.customers[0] ?? null,
@@ -280,6 +299,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setDraggedCardId(null);
   }
 
+  function addDashboardCustomer(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!customerForm.name.trim() || !customerForm.address.trim()) return;
+
+    const newCustomer: Customer = {
+      id: uid(),
+      name: customerForm.name.trim(),
+      phone: customerForm.phone.trim(),
+      email: customerForm.email.trim(),
+      address: customerForm.address.trim(),
+      source: customerForm.source.trim() || 'Facebook',
+      notes: customerForm.notes.trim(),
+      leadStatus: customerForm.leadStatus,
+    };
+
+    setData((prev) => ({ ...prev, customers: [newCustomer, ...prev.customers] }));
+    setCustomerForm({ name: '', phone: '', email: '', address: '', source: 'Facebook', notes: '', leadStatus: 'New Lead' });
+  }
   function openActivity(item: DashboardActivityItem) {
     if (item.jobId) {
       onOpenJob(item.jobId);
@@ -326,6 +363,61 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <button className="ghost" onClick={() => setView('photos')}><Camera size={18} /> Upload Photos</button>
       </section>
 
+
+      <section className="dashboard-customer-intake" aria-label="Add customer">
+        <div className="section-head">
+          <div>
+            <span className="eyebrow">Add Customer</span>
+            <h3>New roofing lead</h3>
+          </div>
+          <span>Saved leads appear in New Lead on the board.</span>
+        </div>
+        <form className="dashboard-customer-form" onSubmit={addDashboardCustomer}>
+          <label className="field">
+            <span>Homeowner</span>
+            <input
+              value={customerForm.name}
+              onChange={(event) => setCustomerForm({ ...customerForm, name: event.target.value })}
+              placeholder="Homeowner name"
+            />
+          </label>
+          <label className="field">
+            <span>Address</span>
+            <input
+              value={customerForm.address}
+              onChange={(event) => setCustomerForm({ ...customerForm, address: event.target.value })}
+              placeholder="Property address"
+            />
+          </label>
+          <label className="field">
+            <span>Phone</span>
+            <input
+              value={customerForm.phone}
+              onChange={(event) => setCustomerForm({ ...customerForm, phone: event.target.value })}
+              placeholder="Phone"
+            />
+          </label>
+          <label className="field">
+            <span>Source</span>
+            <input
+              value={customerForm.source}
+              onChange={(event) => setCustomerForm({ ...customerForm, source: event.target.value })}
+              placeholder="Facebook, referral, sign..."
+            />
+          </label>
+          <label className="field dashboard-customer-notes">
+            <span>Notes</span>
+            <input
+              value={customerForm.notes}
+              onChange={(event) => setCustomerForm({ ...customerForm, notes: event.target.value })}
+              placeholder="Leak, storm damage, estimate request..."
+            />
+          </label>
+          <button type="submit" disabled={!customerForm.name.trim() || !customerForm.address.trim()}>
+            <Plus size={18} /> Add Customer
+          </button>
+        </form>
+      </section>
       <section className="roofing-dashboard-layout">
         <div className="roofing-board-panel">
           <div className="roofing-board-toolbar">

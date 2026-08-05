@@ -1,9 +1,226 @@
 import { useEffect, useMemo, useState } from 'react';
+import {
+  closestCorners,
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+  type UniqueIdentifier,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { AppData, AttachmentType, JobStatus, JobPriority, Job, View } from '../types';
 import { badgeTone, money, openAddressInMaps, openEmailClient, openPhoneDialer, uid } from '../lib';
 import { fetchJobWeather, type JobWeatherSnapshot } from '../weather';
 import { findCustomer, findCrewById, findEstimateForJob, findInspectionForCustomer, findInvoiceForJob, findJob } from '../appLookups';
 
+const JOB_STAGES: JobStatus[] = ['Scheduled', 'In Progress', 'Awaiting Final Review', 'Complete', 'Invoiced', 'Paid'];
+const COLUMN_PREFIX = 'job-stage:';
+
+function columnDroppableId(status: JobStatus) {
+  return `${COLUMN_PREFIX}${status}`;
+}
+
+function statusFromDroppableId(id: UniqueIdentifier): JobStatus | null {
+  const value = String(id);
+  if (!value.startsWith(COLUMN_PREFIX)) return null;
+  const status = value.slice(COLUMN_PREFIX.length) as JobStatus;
+  return JOB_STAGES.includes(status) ? status : null;
+}
+
+function shortAddress(address = '') {
+  return address.split(',').slice(0, 2).join(', ').trim() || 'No address';
+}
+
+function initials(name = '') {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return (parts[0]?.[0] ?? '?') + (parts[1]?.[0] ?? '');
+}
+
+type BoardJobCardProps = {
+  job: Job;
+  data: AppData;
+  selected: boolean;
+  showDetails: boolean;
+  onOpen: () => void;
+  dragAttributes?: React.HTMLAttributes<HTMLElement>;
+  dragListeners?: Record<string, unknown>;
+  setActivatorNodeRef?: (element: HTMLElement | null) => void;
+  isDragging?: boolean;
+};
+
+function BoardJobCard({
+  job,
+  data,
+  selected,
+  showDetails,
+  onOpen,
+  dragAttributes,
+  dragListeners,
+  setActivatorNodeRef,
+  isDragging,
+}: BoardJobCardProps) {
+  const customer = data.customers.find((entry) => entry.id === job.customerId);
+  const crew = data.crews.find((entry) => entry.id === job.crewId);
+  const estimate = data.estimates.find((entry) => entry.jobId === job.id);
+  const invoice = data.invoices.find((entry) => entry.jobId === job.id);
+  const tasks = data.tasks.filter((task) => task.jobId === job.id);
+  const doneTasks = tasks.filter((task) => task.status === 'Done').length;
+  const taskProgress = tasks.length ? Math.round((doneTasks / tasks.length) * 100) : 0;
+  const dueDate = job.scheduledFor ? new Date(`${job.scheduledFor}T00:00:00`) : null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const daysUntilDue = dueDate ? Math.ceil((dueDate.getTime() - today.getTime()) / 86400000) : null;
+  const dueTone = daysUntilDue == null ? 'neutral' : daysUntilDue < 0 ? 'stalled' : daysUntilDue <= 2 ? 'needs-attention' : 'on-track';
+
+  return (
+    <article
+      className={`roofing-board-job ${selected ? 'active' : ''} ${isDragging ? 'dragging' : ''}`}
+      onClick={onOpen}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+    >
+      <div className="roofing-board-job-top">
+        <button
+          type="button"
+          className="drag-handle"
+          aria-label={`Drag ${job.title}`}
+          ref={setActivatorNodeRef as React.Ref<HTMLButtonElement>}
+          {...dragAttributes}
+          {...dragListeners}
+          onClick={(event) => event.stopPropagation()}
+        >
+          ::
+        </button>
+        <div>
+          <strong>{job.title}</strong>
+          <span>{customer?.name ?? 'Unknown customer'}</span>
+        </div>
+        <span className={`pill pill-${badgeTone(job.priority)}`}>{job.priority}</span>
+      </div>
+
+      <button
+        type="button"
+        className="address-link board-address"
+        onClick={(event) => {
+          event.stopPropagation();
+          if (customer?.address) openAddressInMaps(customer.address);
+        }}
+      >
+        {shortAddress(customer?.address)}
+      </button>
+
+      <div className="job-value-row">
+        <strong>{estimate ? money(estimate.totalPrice) : 'No estimate'}</strong>
+        <span className={`status-chip ${dueTone}`}>
+          {daysUntilDue == null ? 'No date' : daysUntilDue < 0 ? `${Math.abs(daysUntilDue)}d late` : daysUntilDue === 0 ? 'Today' : `${daysUntilDue}d`}
+        </span>
+      </div>
+
+      <div className="board-label-row">
+        <span>{job.status}</span>
+        <span>{invoice ? `Invoice ${invoice.status}` : 'No invoice'}</span>
+      </div>
+
+      <div className="task-progress-row" title={`${doneTasks} of ${tasks.length} tasks complete`}>
+        <div>
+          <span style={{ width: `${taskProgress}%` }} />
+        </div>
+        <small>{tasks.length ? `${doneTasks}/${tasks.length}` : '0/0'} tasks</small>
+      </div>
+
+      <div className="card-footer-row">
+        <div className="crew-avatar" title={crew?.name ?? 'Unassigned'}>
+          {initials(crew?.crewLead || crew?.name || 'Unassigned')}
+        </div>
+        <small>{crew?.name ?? 'Unassigned'}</small>
+      </div>
+
+      {showDetails && <p>{job.notes || 'No notes yet.'}</p>}
+    </article>
+  );
+}
+
+function SortableJobCard(props: BoardJobCardProps) {
+  const { attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.job.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <BoardJobCard
+        {...props}
+        dragAttributes={attributes}
+        dragListeners={listeners as Record<string, unknown>}
+        setActivatorNodeRef={setActivatorNodeRef}
+        isDragging={isDragging}
+      />
+    </div>
+  );
+}
+
+type KanbanColumnProps = {
+  status: JobStatus;
+  jobs: Job[];
+  data: AppData;
+  selectedJobId: string | null;
+  showDetails: boolean;
+  onOpenJob: (jobId: string) => void;
+};
+
+function KanbanColumn({ status, jobs, data, selectedJobId, showDetails, onOpenJob }: KanbanColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({ id: columnDroppableId(status) });
+  const totalValue = jobs.reduce((sum, job) => {
+    const estimate = data.estimates.find((entry) => entry.jobId === job.id);
+    return sum + (estimate?.totalPrice ?? 0);
+  }, 0);
+
+  return (
+    <section className={`roofing-kanban-column ${isOver ? 'drop-target' : ''}`} ref={setNodeRef}>
+      <div className="kanban-column-header">
+        <div>
+          <h4>{status}</h4>
+          <small>{jobs.length} jobs</small>
+        </div>
+        <strong>{money(totalValue)}</strong>
+      </div>
+      <SortableContext items={jobs.map((job) => job.id)} strategy={verticalListSortingStrategy}>
+        <div className="kanban-card-stack">
+          {jobs.map((job) => (
+            <SortableJobCard
+              key={job.id}
+              job={job}
+              data={data}
+              selected={selectedJobId === job.id}
+              showDetails={showDetails}
+              onOpen={() => onOpenJob(job.id)}
+            />
+          ))}
+          {jobs.length === 0 && <div className="kanban-empty">Drop jobs here when they reach {status.toLowerCase()}.</div>}
+        </div>
+      </SortableContext>
+    </section>
+  );
+}
 interface JobForm {
   title: string;
   status: JobStatus;
@@ -93,6 +310,56 @@ export const Jobs: React.FC<JobsProps> = ({
   const selectedAttachments = useMemo(() => data.attachments.filter((entry) => entry.jobId === selectedJobId), [data.attachments, selectedJobId]);
   const activeJobs = data.jobs.filter((job) => job.status !== 'Complete' && job.status !== 'Paid');
   const highPriorityJobs = data.jobs.filter((job) => job.priority === 'High');
+  const [activeDragJob, setActiveDragJob] = useState<Job | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const jobsByStage = useMemo(() => {
+    return JOB_STAGES.reduce<Record<JobStatus, Job[]>>((acc, status) => {
+      acc[status] = filteredJobs.filter((job) => job.status === status);
+      return acc;
+    }, {} as Record<JobStatus, Job[]>);
+  }, [filteredJobs]);
+  const filteredPipelineValue = filteredJobs.reduce((sum, job) => {
+    const estimate = data.estimates.find((entry) => entry.jobId === job.id);
+    return sum + (estimate?.totalPrice ?? 0);
+  }, 0);
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveDragJob(data.jobs.find((job) => job.id === String(event.active.id)) ?? null);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const activeId = String(event.active.id);
+    const overId = event.over?.id;
+    setActiveDragJob(null);
+    if (!overId) return;
+
+    const activeJob = data.jobs.find((job) => job.id === activeId);
+    if (!activeJob) return;
+
+    const overJob = data.jobs.find((job) => job.id === String(overId));
+    const targetStatus = statusFromDroppableId(overId) ?? overJob?.status;
+    if (!targetStatus) return;
+
+    setData((prev) => {
+      const patchedJobs = prev.jobs.map((job) => job.id === activeId ? { ...job, status: targetStatus } : job);
+      const fromIndex = patchedJobs.findIndex((job) => job.id === activeId);
+      if (fromIndex < 0) return prev;
+
+      let toIndex = overJob ? patchedJobs.findIndex((job) => job.id === overJob.id) : -1;
+      if (toIndex < 0) {
+        const targetIndexes = patchedJobs
+          .map((job, index) => job.status === targetStatus && job.id !== activeId ? index : -1)
+          .filter((index) => index >= 0);
+        toIndex = targetIndexes.at(-1) ?? fromIndex;
+      }
+
+      return { ...prev, jobs: arrayMove(patchedJobs, fromIndex, toIndex) };
+    });
+    selectJob(activeId);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -707,23 +974,31 @@ export const Jobs: React.FC<JobsProps> = ({
       </div>
 
       <div className="column-stack span-2">
-        <div className="card">
-          <div className="section-head">
-            <h3>Projects</h3>
+        <div className="card board-workspace-card">
+          <div className="section-head board-section-head">
+            <div>
+              <h3>Job Board</h3>
+              <span>{selectedCustomer ? `Showing projects for ${selectedCustomer.name}` : 'All pipelines and active roofing jobs'}</span>
+            </div>
             <input
               className="search"
-              placeholder="Search projects, customer, status..."
+              placeholder="Search jobs, customer, status..."
               value={jobSearch}
               onChange={(event) => setJobSearch(event.target.value)}
             />
           </div>
-          <div className="mini-stats-grid">
+
+          <div className="mini-stats-grid board-stats-grid">
             <div className="mini-stat-card">
-              <span>Total projects</span>
+              <span>Visible value</span>
+              <strong>{money(filteredPipelineValue)}</strong>
+            </div>
+            <div className="mini-stat-card">
+              <span>Total jobs</span>
               <strong>{data.jobs.length}</strong>
             </div>
             <div className="mini-stat-card">
-              <span>Active projects</span>
+              <span>Active jobs</span>
               <strong>{activeJobs.length}</strong>
             </div>
             <div className="mini-stat-card">
@@ -731,83 +1006,56 @@ export const Jobs: React.FC<JobsProps> = ({
               <strong>{highPriorityJobs.length}</strong>
             </div>
           </div>
-          <div className="hero-actions">
-            <button className="ghost" onClick={() => setShowProjectListDetails((prev) => !prev)}>
-              {showProjectListDetails ? 'Simple list' : 'Show more in list'}
-            </button>
-          </div>
-          <div className="jobs-toolbar">
-            <span>
-              {selectedCustomer ? `Showing projects for ${selectedCustomer.name}` : 'Showing all projects'}
-            </span>
-            {selectedCustomer && (
-              <button className="ghost" onClick={() => selectCustomer(null)}>
-                Show all
-              </button>
-            )}
-          </div>
-          <div className="job-board-list">
-            {filteredJobs.map((job) => {
-              const customer = data.customers.find((entry) => entry.id === job.customerId);
-              const crew = data.crews.find((entry) => entry.id === job.crewId);
-              const estimate = data.estimates.find((entry) => entry.jobId === job.id);
-              const invoice = data.invoices.find((entry) => entry.jobId === job.id);
-              return (
-                <div
-                  key={job.id}
-                  className={`job-board-row ${selectedJobId === job.id ? 'active' : ''}`}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => selectJob(job.id)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      selectJob(job.id);
-                    }
-                  }}
-                >
-                  <div className="job-board-main">
-                    <div className="list-row-top">
-                      <strong>{job.title}</strong>
-                      <span className={`pill pill-${badgeTone(job.status)}`}>
-                        {job.status}
-                      </span>
-                    </div>
-                    <div className="job-board-info">
-                      <span>{customer?.name ?? 'Unknown customer'}</span>
-                      <span>{job.scheduledFor || 'No date set'}</span>
-                      <span>{job.priority} priority</span>
-                      <span>{crew?.name ?? 'No crew'}</span>
-                    </div>
-                    {showProjectListDetails && <small>{job.notes || 'No notes yet'}</small>}
-                    {showProjectListDetails && <div className="job-tile-meta-row">
-                      <span>{estimate ? `Estimate ${money(estimate.totalPrice)}` : 'No estimate'}</span>
-                      <span>{invoice ? `Invoice ${invoice.status}` : 'No invoice'}</span>
-                    </div>}
-                  </div>
-                  <div className="job-board-meta">
-                    {customer?.address ? (
-                      <button
-                        type="button"
-                        className="address-link"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          openAddressInMaps(customer.address);
-                        }}
-                      >
-                        {customer.address}
-                      </button>
-                    ) : (
-                      <span>No address</span>
-                    )}
-                    <strong>{selectedJobId === job.id ? 'Selected' : 'Open'}</strong>
-                  </div>
-                </div>
-              );
-            })}
 
-            {filteredJobs.length === 0 && <div className="empty">No projects found.</div>}
+          <div className="jobs-toolbar board-toolbar">
+            <span>Drag cards between stages. Click a card to keep its detail panel open on the left.</span>
+            <div className="hero-actions compact-actions">
+              <button className="ghost" onClick={() => setShowProjectListDetails((prev) => !prev)}>
+                {showProjectListDetails ? 'Compact cards' : 'Detailed cards'}
+              </button>
+              {selectedCustomer && (
+                <button className="ghost" onClick={() => selectCustomer(null)}>
+                  Show all
+                </button>
+              )}
+            </div>
           </div>
+
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={() => setActiveDragJob(null)}
+          >
+            <div className="kanban-shell job-kanban-shell">
+              {JOB_STAGES.map((status) => (
+                <KanbanColumn
+                  key={status}
+                  status={status}
+                  jobs={jobsByStage[status]}
+                  data={data}
+                  selectedJobId={selectedJobId}
+                  showDetails={showProjectListDetails}
+                  onOpenJob={selectJob}
+                />
+              ))}
+            </div>
+            <DragOverlay>
+              {activeDragJob ? (
+                <BoardJobCard
+                  job={activeDragJob}
+                  data={data}
+                  selected={selectedJobId === activeDragJob.id}
+                  showDetails={showProjectListDetails}
+                  onOpen={() => undefined}
+                  isDragging
+                />
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+
+          {filteredJobs.length === 0 && <div className="empty">No projects found.</div>}
         </div>
       </div>
     </section>

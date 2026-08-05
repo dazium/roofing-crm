@@ -32,6 +32,18 @@ function routeDate(value?: string) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
 }
 
+type RouteMetric = {
+  title: string;
+  subtitle: string;
+  value: string | number;
+};
+
+const routeModes: Array<{ id: 'active' | 'schedule' | 'crew'; label: string }> = [
+  { id: 'active', label: 'Active first' },
+  { id: 'schedule', label: 'By schedule' },
+  { id: 'crew', label: 'By crew' },
+];
+
 export const Locations: React.FC<LocationsProps> = ({
   data,
   selectedCustomerId,
@@ -106,6 +118,12 @@ export const Locations: React.FC<LocationsProps> = ({
   const routeAddresses = [...(routeStartAddress.trim() ? [routeStartAddress.trim()] : []), ...routePlanRows.map((row) => row.address)];
   const routeUrl = buildGoogleMapsDirectionsUrl(routeAddresses);
   const selectedMapUrl = selectedRow ? buildGoogleMapsEmbedUrl(selectedRow.address) : '';
+
+  const routeMetrics: RouteMetric[] = [
+    { title: 'Selected stops', subtitle: 'Current route stops', value: routePlanRows.length },
+    { title: 'Assigned crews', subtitle: 'Crews represented in route', value: new Set(routePlanRows.map((row) => row.crewName).filter(Boolean)).size },
+    { title: 'High priority', subtitle: 'Urgent locations in route', value: routePlanRows.filter((row) => row.priority === 'High').length },
+  ];
 
   function openRoute() {
     if (!routeUrl) return;
@@ -198,26 +216,26 @@ export const Locations: React.FC<LocationsProps> = ({
               <input type="date" value={routeDateFilter} onChange={(event) => setRouteDateFilter(event.target.value)} />
             </label>
           </div>
-          <div className="hero-actions">
-            <button className={routeMode === 'active' ? '' : 'ghost'} onClick={() => setRouteMode('active')}>Active first</button>
-            <button className={routeMode === 'schedule' ? '' : 'ghost'} onClick={() => setRouteMode('schedule')}>By schedule</button>
-            <button className={routeMode === 'crew' ? '' : 'ghost'} onClick={() => setRouteMode('crew')}>By crew</button>
+          <div className="hero-actions route-mode-actions">
+            {routeModes.map((mode) => (
+              <button
+                key={mode.id}
+                className={routeMode === mode.id ? '' : 'ghost'}
+                onClick={() => setRouteMode(mode.id)}
+              >
+                {mode.label}
+              </button>
+            ))}
             <button className="ghost" onClick={loadSuggestedRoute}>Load suggested</button>
             <button className="ghost" onClick={clearRoutePlan}>Clear</button>
           </div>
           <div className="route-summary-strip">
-            <div>
-              <span>Total stops</span>
-              <strong>{routePlanRows.length}</strong>
-            </div>
-            <div>
-              <span>Crews</span>
-              <strong>{new Set(routePlanRows.map((row) => row.crewName).filter(Boolean)).size}</strong>
-            </div>
-            <div>
-              <span>High priority</span>
-              <strong>{routePlanRows.filter((row) => row.priority === 'High').length}</strong>
-            </div>
+            {routeMetrics.map((metric) => (
+              <div key={metric.title}>
+                <span>{metric.title}</span>
+                <strong>{metric.value}</strong>
+              </div>
+            ))}
           </div>
           <div className="route-stop-list">
             {routePlanRows.length ? routePlanRows.map((row, index) => (

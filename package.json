@@ -30,6 +30,9 @@
     "@capacitor/android": "^8.2.0",
     "@capacitor/cli": "^8.2.0",
     "@capacitor/core": "^8.2.0",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "lucide-react": "^1.25.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
@@ -64,6 +67,7 @@
     "directories": {
       "output": "release"
     },
+    "icon": "build/icon.png",
     "files": [
       "dist/**/*",
       "electron/**/*",
@@ -88,7 +92,8 @@
       "shortcutName": "RoofingCRM",
       "deleteAppDataOnUninstall": false,
       "displayLanguageSelector": false,
-      "warningsAsErrors": false
+      "warningsAsErrors": false,
+      "include": "build/installer.nsh"
     }
   }
 }
