@@ -16,6 +16,7 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [selectedMemberId, setSelectedMemberId] = useState('');
   const [showStopConfirm, setShowStopConfirm] = useState(false);
+  const [toast, setToast] = useState({ message: '', show: false });
 
   const today = new Date().toISOString().split('T')[0];
   const todayLog = data.timeLogs.find(
@@ -104,6 +105,8 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
 
     setElapsedSeconds(0);
     onUpdate({ ...data, timeLogs: nextLogs });
+    setToast({ message: 'Day started', show: true });
+    setTimeout(() => setToast({ message: '', show: false }), 3500);
   }
 
   function requestStopDay() {
@@ -163,6 +166,8 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
         log.id === todayLog.id ? updatedLog : log
       ),
     });
+    setToast({ message: 'Day stopped and active sessions closed', show: true });
+    setTimeout(() => setToast({ message: '', show: false }), 3500);
   }
 
   function punchIn() {
@@ -367,6 +372,7 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
           </div>
         </div>
       )}
+      {toast.show && <div className="toast">{toast.message}</div>}
     </div>
   );
 };

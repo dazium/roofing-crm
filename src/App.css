@@ -440,6 +440,21 @@ button:disabled {
   gap: 10px;
 }
 
+/* Toast notification */
+.toast {
+  position: fixed;
+  right: 20px;
+  bottom: 24px;
+  background: linear-gradient(180deg, rgba(16,185,129,0.12), rgba(16,185,129,0.06));
+  border: 1px solid rgba(16,185,129,0.18);
+  color: #ccfbf1;
+  padding: 12px 16px;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(2,6,23,0.5);
+  z-index: 1200;
+  font-weight: 700;
+}
+
 .mobile-nav-items {
   display: flex;
   gap: 8px;
