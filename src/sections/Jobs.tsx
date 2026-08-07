@@ -512,7 +512,7 @@ export const Jobs: React.FC<JobsProps> = ({
   }
 
   return (
-    <section className="content-grid">
+    <section className="content-grid jobs-layout">
       <div className="column-stack">
         <div className="card">
           <div className="section-head">

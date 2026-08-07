@@ -23,6 +23,9 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
   const activeEntry = todayLog?.entries.find((entry) => !entry.punchOutTime);
   const isRunning = Boolean(activeEntry);
   const onBreak = Boolean(activeEntry?.breakStartTime);
+  const dayStartedAt = todayLog?.dayStartedAt;
+  const dayStoppedAt = todayLog?.dayStoppedAt;
+  const dayActive = Boolean(todayLog?.dayActive);
 
   // Timer effect
   useEffect(() => {
@@ -52,6 +55,104 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${hours}h ${mins}m`;
+  }
+
+  function formatTimeStamp(timestamp?: string): string {
+    if (!timestamp) return 'Unknown';
+    return new Date(timestamp).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  function startDay() {
+    if (!selectedCrewId || !crew || dayActive) return;
+    const now = new Date().toISOString();
+    const crewEntries = crew.members.map((member) => ({
+      id: uid(),
+      crewId: selectedCrewId,
+      memberId: member.id,
+      date: today,
+      punchInTime: now,
+      breakMinutes: 0,
+    }));
+
+    const updatedLog = todayLog
+      ? {
+          ...todayLog,
+          dayStartedAt: now,
+          dayStoppedAt: undefined,
+          dayActive: true,
+          entries: [...todayLog.entries, ...crewEntries],
+        }
+      : {
+          id: uid(),
+          crewId: selectedCrewId,
+          date: today,
+          entries: crewEntries,
+          totalMinutes: 0,
+          dayStartedAt: now,
+          dayActive: true,
+        };
+
+    const nextLogs = todayLog
+      ? data.timeLogs.map((log) =>
+          log.id === todayLog.id ? updatedLog : log
+        )
+      : [...data.timeLogs, updatedLog];
+
+    setElapsedSeconds(0);
+    onUpdate({ ...data, timeLogs: nextLogs });
+  }
+
+  function stopDay() {
+    if (!selectedCrewId || !todayLog || !dayActive) return;
+    if (!confirm('Stop day and punch out all active sessions for this crew?')) return;
+    const now = new Date().toISOString();
+
+    const updatedEntries = todayLog.entries.map((entry) => {
+      if (entry.punchOutTime) return entry;
+      const punchInTime = new Date(entry.punchInTime);
+      const currentBreakMinutes = entry.breakStartTime
+        ? Math.round(
+            (Date.now() - new Date(entry.breakStartTime).getTime()) / 60000
+          )
+        : 0;
+      const totalBreakMinutes = (entry.breakMinutes || 0) + currentBreakMinutes;
+      const durationMs =
+        new Date(now).getTime() - punchInTime.getTime() -
+        totalBreakMinutes * 60000;
+      const durationMinutes = Math.max(0, Math.round(durationMs / 60000));
+
+      return {
+        ...entry,
+        punchOutTime: now,
+        durationMinutes,
+        breakMinutes: totalBreakMinutes,
+        breakStartTime: undefined,
+      };
+    });
+
+    const totalMinutes = updatedEntries.reduce(
+      (sum, entry) => sum + (entry.durationMinutes || 0),
+      0
+    );
+
+    const updatedLog = {
+      ...todayLog,
+      entries: updatedEntries,
+      totalMinutes,
+      dayStoppedAt: now,
+      dayActive: false,
+    };
+
+    setElapsedSeconds(0);
+    onUpdate({
+      ...data,
+      timeLogs: data.timeLogs.map((log) =>
+        log.id === todayLog.id ? updatedLog : log
+      ),
+    });
   }
 
   function punchIn() {
@@ -153,10 +254,30 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
         <div><h3>Time clock</h3><span>Track each crew member's site time</span></div>
         {activeMember ? <span className="active-badge">{activeMember.name} active</span> : null}
       </div>
+      <div className="day-control">
+        <button
+          className={`punch-button ${dayActive ? 'ghost' : 'punch-in'}`}
+          onClick={dayActive ? stopDay : startDay}
+          disabled={!selectedCrewId || (!crew) || (dayActive ? false : false)}
+        >
+          {dayActive ? 'Stop Day' : 'Start Day'}
+        </button>
+        <div className="day-status">
+          {dayStartedAt ? (
+            dayActive ? (
+              <span>Day started at {formatTimeStamp(dayStartedAt)}</span>
+            ) : (
+              <span>Day stopped at {formatTimeStamp(dayStoppedAt || dayStartedAt)}</span>
+            )
+          ) : (
+            <span>Day not started</span>
+          )}
+        </div>
+      </div>
       {!isRunning ? (
         <label className="field field-compact"><span>Crew member</span><select value={selectedMemberId} onChange={(event) => setSelectedMemberId(event.target.value)}>
           <option value="">Select who is starting</option>
-          {crew?.members.map((member) => <option key={member.id} value={member.id}>{member.name}{member.role ? ` · ${member.role}` : ''}</option>)}
+          {crew?.members.map((member) => <option key={member.id} value={member.id}>{member.name}{member.role ? ` · ${member.role}` : ''}</option>) }
         </select></label>
       ) : null}
       <div className="time-display">

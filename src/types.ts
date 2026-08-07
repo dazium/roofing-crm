@@ -223,6 +223,9 @@ export type TimeLog = {
   date: string; // ISO date string (YYYY-MM-DD)
   entries: TimeEntry[];
   totalMinutes: number; // total minutes for the day
+  dayStartedAt?: string; // ISO timestamp when crew day started
+  dayStoppedAt?: string; // ISO timestamp when crew day stopped
+  dayActive?: boolean; // whether the crew day is currently active
 }
 
 export type PlaneStats = { rawArea: number; slopeFactor: number; adjustedArea: number; squares: number }
