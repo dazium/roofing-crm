@@ -400,6 +400,46 @@ button:disabled {
   letter-spacing: 0.08em;
 }
 
+/* Day control and modal styles for TimeTracking */
+.day-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+}
+.day-status {
+  color: var(--muted);
+  font-size: 13px;
+}
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(2,6,23,0.6);
+  z-index: 1000;
+}
+.modal-box {
+  background: var(--card);
+  padding: 18px;
+  border-radius: 10px;
+  width: min(520px, 96%);
+  box-shadow: 0 24px 60px rgba(2,6,23,0.6);
+  border: 1px solid rgba(255,255,255,0.04);
+}
+.modal-box h4 {
+  margin: 0 0 8px 0;
+}
+.modal-box p {
+  margin: 0 0 16px 0;
+  color: var(--muted);
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .mobile-nav-items {
   display: flex;
   gap: 8px;

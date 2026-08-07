@@ -15,6 +15,7 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
 }) => {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [selectedMemberId, setSelectedMemberId] = useState('');
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
   const todayLog = data.timeLogs.find(
@@ -105,9 +106,17 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
     onUpdate({ ...data, timeLogs: nextLogs });
   }
 
-  function stopDay() {
+  function requestStopDay() {
     if (!selectedCrewId || !todayLog || !dayActive) return;
-    if (!confirm('Stop day and punch out all active sessions for this crew?')) return;
+    setShowStopConfirm(true);
+  }
+
+  function cancelStop() {
+    setShowStopConfirm(false);
+  }
+
+  function confirmStopDay() {
+    if (!selectedCrewId || !todayLog || !dayActive) return;
     const now = new Date().toISOString();
 
     const updatedEntries = todayLog.entries.map((entry) => {
@@ -146,6 +155,7 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
       dayActive: false,
     };
 
+    setShowStopConfirm(false);
     setElapsedSeconds(0);
     onUpdate({
       ...data,
@@ -257,7 +267,7 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
       <div className="day-control">
         <button
           className={`punch-button ${dayActive ? 'ghost' : 'punch-in'}`}
-          onClick={dayActive ? stopDay : startDay}
+          onClick={dayActive ? requestStopDay : startDay}
           disabled={!selectedCrewId || (!crew) || (dayActive ? false : false)}
         >
           {dayActive ? 'Stop Day' : 'Start Day'}
@@ -342,6 +352,18 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+      {showStopConfirm && (
+        <div className="modal-overlay" role="dialog" aria-modal="true">
+          <div className="modal-box">
+            <h4>Stop Day</h4>
+            <p>Stop day and punch out all active sessions for this crew?</p>
+            <div className="modal-actions">
+              <button className="ghost" onClick={cancelStop}>Cancel</button>
+              <button className="punch-button punch-out" onClick={confirmStopDay}>Stop Day</button>
+            </div>
           </div>
         </div>
       )}
