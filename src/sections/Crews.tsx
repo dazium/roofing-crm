@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { AppData, Crew, CrewMember, CrewStatus } from '../types';
 import { badgeTone, uid } from '../lib';
 
@@ -31,6 +31,8 @@ export const Crews: React.FC<CrewsProps> = ({ data, setData }) => {
   const [crewForm, setCrewForm] = useState<CrewForm>(emptyCrewForm);
   const [editingCrewId, setEditingCrewId] = useState<string | null>(null);
   const [memberForm, setMemberForm] = useState({ name: '', role: '', phone: '', email: '', notes: '' });
+  const formCardRef = useRef<HTMLDivElement | null>(null);
+  const rosterCardRef = useRef<HTMLDivElement | null>(null);
 
   const selectedCrew = useMemo(
     () => data.crews.find((crew) => crew.id === editingCrewId) ?? null,
@@ -41,6 +43,15 @@ export const Crews: React.FC<CrewsProps> = ({ data, setData }) => {
     setCrewForm(emptyCrewForm);
     setMemberForm({ name: '', role: '', phone: '', email: '', notes: '' });
     setEditingCrewId(null);
+  }
+
+  function openAddCrew() {
+    resetForm();
+    formCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function openManageCrews() {
+    rosterCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function cleanMembers(members: CrewMember[]) {
@@ -151,10 +162,16 @@ export const Crews: React.FC<CrewsProps> = ({ data, setData }) => {
   return (
     <section className="content-grid two-col">
       <div className="column-stack">
-        <div className="card">
+        <div className="card" ref={formCardRef}>
           <div className="section-head">
-            <h3>{editingCrewId ? `Edit crew: ${selectedCrew?.name ?? ''}` : 'Crew management'}</h3>
-            <span>Imported from Rooftop Renovators: dedicated crew records</span>
+            <div>
+              <h3>{editingCrewId ? `Edit crew: ${selectedCrew?.name ?? ''}` : 'Crew management'}</h3>
+              <span>Imported from Rooftop Renovators: dedicated crew records</span>
+            </div>
+            <div className="hero-actions crew-management-actions">
+              <button type="button" onClick={openAddCrew}>Add crew</button>
+              <button type="button" className="ghost" onClick={openManageCrews}>Manage crews</button>
+            </div>
           </div>
           <div className="form-grid compact-grid">
             <label className="field">
@@ -225,10 +242,13 @@ export const Crews: React.FC<CrewsProps> = ({ data, setData }) => {
       </div>
 
       <div className="column-stack">
-        <div className="card">
+        <div className="card" ref={rosterCardRef}>
           <div className="section-head">
-            <h3>Crew roster</h3>
-            <span>{activeCrews} active of {data.crews.length} total</span>
+            <div>
+              <h3>Crew roster</h3>
+              <span>{activeCrews} active of {data.crews.length} total</span>
+            </div>
+            <button type="button" onClick={openAddCrew}>Add crew</button>
           </div>
           <div className="list-grid">
             {data.crews.length ? data.crews.map((crew) => (

@@ -359,6 +359,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <button className="quick-primary" onClick={() => setView('customers')}><Plus size={18} /> New Lead</button>
         <button className="ghost" onClick={onOpenEstimates}><FileText size={18} /> Create Estimate</button>
         <button className="ghost" onClick={() => setView('calendar')}><CalendarDays size={18} /> Schedule Crew</button>
+        <button className="ghost" onClick={() => setView('crews')}><HardHat size={18} /> Manage Crews</button>
         <button className="ghost" onClick={() => setView('materials')}><Package size={18} /> Order Materials</button>
         <button className="ghost" onClick={() => setView('photos')}><Camera size={18} /> Upload Photos</button>
       </section>

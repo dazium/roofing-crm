@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BarChart3, CalendarDays, Camera, FileText, Home, KanbanSquare, MapPin, Package, Settings as SettingsIcon, Truck, Users, Clock3, ClipboardPlus, ClipboardCheck, PackageCheck, FileSignature, ChartNoAxesCombined } from 'lucide-react';
+import { BarChart3, CalendarDays, Camera, FileText, HardHat, Home, KanbanSquare, MapPin, Package, Settings as SettingsIcon, Truck, Users, Clock3, ClipboardPlus, ClipboardCheck, PackageCheck, FileSignature, ChartNoAxesCombined } from 'lucide-react';
 import './App.css';
 import { Dashboard } from './sections/Dashboard';
 import { Customers } from './sections/Customers';
@@ -516,6 +516,7 @@ export default function App() {
         { key: 'calendar', label: 'Calendar', count: data.appointments.length, icon: <CalendarDays size={18} /> },
         { key: 'materials', label: 'Materials', count: data.materialPrices.length, icon: <Truck size={18} /> },
         { key: 'locations', label: 'Route Optimization', count: data.customers.filter((customer) => customer.address.trim()).length, icon: <MapPin size={18} /> },
+        { key: 'crews', label: 'Crews', count: data.crews.length, icon: <HardHat size={18} /> },
         { key: 'photos', label: 'Photos', count: totalPhotos, icon: <Camera size={18} /> },
         { key: 'reports', label: 'Financial Dashboard', count: data.invoices.length, icon: <BarChart3 size={18} /> },
         { key: 'timesheets', label: 'Timesheets', icon: <Clock3 size={18} /> },
