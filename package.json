@@ -52,6 +52,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "playwright": "^1.60.0",
     "puppeteer": "^23.0.0",
     "sqlite3": "^5.1.7",
     "typescript": "~5.9.3",
@@ -62,7 +63,7 @@
   },
   "build": {
     "appId": "com.daziu.roofingcrm.desktop",
-    "productName": "RoofingCRM",
+    "productName": "Munro & Sons Roofing Experts",
     "artifactName": "${productName} Setup ${version}.${ext}",
     "directories": {
       "output": "release"
@@ -89,7 +90,7 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "shortcutName": "RoofingCRM",
+      "shortcutName": "Munro & Sons Roofing Experts",
       "deleteAppDataOnUninstall": false,
       "displayLanguageSelector": false,
       "warningsAsErrors": false,
