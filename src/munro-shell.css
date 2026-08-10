@@ -26,6 +26,7 @@ body { background: var(--munro-bg); }
 .nav-item:hover { background: rgba(255, 255, 255, 0.045); }
 .nav-item.active { background: var(--munro-accent-soft); border-color: rgba(245, 158, 11, 0.3); box-shadow: inset 3px 0 0 var(--munro-accent); }
 .nav-item.active .nav-label-with-icon, .nav-item.active strong { color: #fff7ed; }
+.nav-item:focus-visible, .workflow-step:focus-visible, .roofing-metric:focus-visible, .ghost:focus-visible { outline: 2px solid var(--munro-accent); outline-offset: 2px; }
 
 .main-pane { padding: 24px 28px 40px; background: radial-gradient(circle at 12% 0%, rgba(245, 158, 11, 0.055), transparent 28%), linear-gradient(180deg, #091522 0%, #07111d 100%); }
 .page-header-shell { margin: -24px -28px 18px; padding: 18px 28px 14px; background: rgba(7, 17, 29, 0.9); border-bottom: 1px solid var(--munro-line); }
