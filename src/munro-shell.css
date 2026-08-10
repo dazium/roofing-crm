@@ -1,0 +1,133 @@
+/* Munro & Sons application shell — MSRE-inspired visual layer. */
+:root {
+  --munro-bg: #07111d;
+  --munro-panel: #0d1a2a;
+  --munro-line: rgba(148, 163, 184, 0.16);
+  --munro-text: #f8fafc;
+  --munro-accent: #f59e0b;
+  --munro-accent-soft: rgba(245, 158, 11, 0.12);
+}
+
+body { background: var(--munro-bg); }
+
+.brand-block h1,
+.brand-block p,
+.page-header .eyebrow { font-size: 0; }
+
+.brand-block h1::after {
+  content: 'Munro & Sons Roofing Experts';
+  font-size: 17px;
+  line-height: 1.15;
+}
+
+.brand-block p::after {
+  content: 'Roofing operations';
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.page-header .eyebrow::after {
+  content: 'Munro & Sons';
+  font-size: 11px;
+}
+
+.page-shell {
+  grid-template-columns: 248px minmax(0, 1fr);
+  background: var(--munro-bg);
+}
+
+.page-shell.simple-view { grid-template-columns: 220px minmax(0, 1fr); }
+
+.sidebar {
+  padding: 18px 0;
+  background: linear-gradient(180deg, #081422 0%, #06101b 100%);
+  border-right: 1px solid var(--munro-line);
+}
+
+.brand-block { margin: 0 18px 24px; gap: 11px; }
+
+.brand-mark {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border-radius: 11px;
+  background: var(--munro-accent-soft);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  color: var(--munro-accent);
+}
+
+.sidebar-label { margin-left: 4px; letter-spacing: 0.14em; }
+
+.nav-item { margin: 0 9px 4px; padding: 10px 12px; border-radius: 9px; }
+.nav-item:hover { background: rgba(255, 255, 255, 0.045); }
+
+.nav-item.active {
+  background: var(--munro-accent-soft);
+  border-color: rgba(245, 158, 11, 0.3);
+  box-shadow: inset 3px 0 0 var(--munro-accent);
+}
+
+.nav-item.active .nav-label-with-icon,
+.nav-item.active strong { color: #fff7ed; }
+
+.main-pane {
+  padding: 24px 28px 40px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(245, 158, 11, 0.055), transparent 28%),
+    linear-gradient(180deg, #091522 0%, #07111d 100%);
+}
+
+.page-header-shell {
+  margin: -24px -28px 18px;
+  padding: 18px 28px 14px;
+  background: rgba(7, 17, 29, 0.9);
+  border-bottom: 1px solid var(--munro-line);
+}
+
+.page-header h2 { letter-spacing: -0.025em; }
+.header-chip { background: rgba(255, 255, 255, 0.035); border-color: var(--munro-line); }
+.header-chip strong { color: var(--munro-text); }
+.context-strip { gap: 12px; }
+
+.context-card {
+  background: rgba(13, 26, 42, 0.9);
+  border: 1px solid var(--munro-line);
+  border-radius: 10px;
+}
+
+.workflow-strip { gap: 7px; }
+.workflow-step { border-color: var(--munro-line); background: rgba(255, 255, 255, 0.025); }
+.workflow-step:hover,
+.workflow-step.active { border-color: rgba(245, 158, 11, 0.35); background: var(--munro-accent-soft); }
+
+/* Compact, high-information operations board. */
+.roofing-metric-strip { gap: 10px; }
+.roofing-metric { min-height: 108px; border: 1px solid var(--munro-line); border-radius: 10px; box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18); }
+.roofing-quick-actions { margin: 12px 0 16px; gap: 8px; }
+.roofing-quick-actions .ghost,
+.dashboard-customer-form button,
+.floating-new-job { border-radius: 8px; }
+
+.dashboard-customer-intake,
+.roofing-board-panel,
+.ops-widget {
+  border: 1px solid var(--munro-line);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
+}
+
+.dashboard-customer-intake { background: rgba(13, 26, 42, 0.82); }
+.roofing-board-panel,
+.ops-widget { background: rgba(9, 21, 34, 0.88); }
+.roofing-board-toolbar { border-bottom-color: var(--munro-line); }
+.roofing-kanban-column { background: rgba(255, 255, 255, 0.018); border-color: var(--munro-line); }
+.kanban-column-header { border-bottom-color: var(--munro-line); }
+.roofing-job-card { background: var(--munro-panel); border-color: var(--munro-line); }
+.roofing-job-card:hover { border-color: rgba(245, 158, 11, 0.34); transform: translateY(-1px); }
+.status-chip.status-on-track { border-color: rgba(16, 185, 129, 0.3); }
+
+@media (max-width: 1180px) {
+  .page-shell,
+  .page-shell.simple-view { grid-template-columns: 210px minmax(0, 1fr); }
+  .main-pane { padding-left: 20px; padding-right: 20px; }
+  .page-header-shell { margin-left: -20px; margin-right: -20px; padding-left: 20px; padding-right: 20px; }
+}
