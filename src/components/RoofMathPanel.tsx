@@ -1,4 +1,4 @@
-import { calcMaterialPlan, slopeFactorFromPitch, money } from '../lib';
+import { calcMaterialPlan, slopeFactorFromPitch, money, selectEstimatingShinglePrice } from '../lib';
 import type { MaterialPriceSetting, Measurements } from '../types';
 
 interface RoofMathPanelProps {
@@ -22,7 +22,8 @@ export const RoofMathPanel: React.FC<RoofMathPanelProps> = ({
   const slopeAdjustedSquareFeet = plan.slopeAdjustedSquares * 100;
   const estimatingSquareFeet = plan.effectiveSquares * 100;
   const prices = Object.fromEntries(materialPrices.map((item) => [item.id, item]));
-  const shinglePrice = prices['mat-shingles']?.price ?? 0;
+  const shingleMaterial = selectEstimatingShinglePrice(materialPrices);
+  const shinglePrice = shingleMaterial?.price ?? 0;
   const starterPrice = prices['mat-starter']?.price ?? 0;
   const ridgeCapPrice = prices['mat-ridge-cap']?.price ?? 0;
   const underlaymentPrice = prices['mat-underlayment']?.price ?? 0;
@@ -85,7 +86,7 @@ export const RoofMathPanel: React.FC<RoofMathPanelProps> = ({
           <strong>{Math.round(estimatingSquareFeet)}</strong>
         </div>
         <div className="planner-card">
-          <span>Shingle bundles</span>
+          <span>{shingleMaterial?.label ?? 'Shingle'} bundles</span>
           <strong>{plan.bundles}</strong>
           <small>{money(shingleCost)} total</small>
         </div>

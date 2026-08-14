@@ -2,7 +2,16 @@ import { seedData } from './data'
 import { inferMaterialCategory } from './lib'
 import type { AppData } from './types'
 
+function mergeMaterialPricesWithSeed(materialPrices: AppData['materialPrices']) {
+  const existingIds = new Set(materialPrices.map((material) => material.id))
+  return [
+    ...materialPrices,
+    ...seedData.materialPrices.filter((material) => !existingIds.has(material.id)),
+  ]
+}
+
 export function normalizeAppData(partial?: Partial<AppData> | null): AppData {
+  const materialPrices = mergeMaterialPricesWithSeed(partial?.materialPrices ?? seedData.materialPrices)
   const normalized: AppData = {
     companyProfile: partial?.companyProfile ?? seedData.companyProfile,
     customers: partial?.customers ?? seedData.customers,
@@ -19,7 +28,7 @@ export function normalizeAppData(partial?: Partial<AppData> | null): AppData {
     }),
     invoiceHistory: partial?.invoiceHistory ?? [],
     inspections: partial?.inspections ?? seedData.inspections,
-    materialPrices: (partial?.materialPrices ?? seedData.materialPrices).map((material) => ({
+    materialPrices: materialPrices.map((material) => ({
       ...material,
       category: material.category ?? inferMaterialCategory(`${material.id} ${material.label}`),
     })),

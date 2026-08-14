@@ -213,12 +213,13 @@ export const TimeTracking: React.FC<TimeTrackingProps> = ({
     if (!selectedCrewId || !activeEntry || !todayLog) return;
 
     const punchOutTime = new Date().toISOString();
+    const punchOutMs = new Date(punchOutTime).getTime();
     const punchInTime = new Date(activeEntry.punchInTime);
     const currentBreakMinutes = activeEntry.breakStartTime
-      ? Math.round((Date.now() - new Date(activeEntry.breakStartTime).getTime()) / 60000)
+      ? Math.round((punchOutMs - new Date(activeEntry.breakStartTime).getTime()) / 60000)
       : 0;
     const totalBreakMinutes = (activeEntry.breakMinutes || 0) + currentBreakMinutes;
-    const durationMs = new Date(punchOutTime).getTime() - punchInTime.getTime() - totalBreakMinutes * 60000;
+    const durationMs = punchOutMs - punchInTime.getTime() - totalBreakMinutes * 60000;
     const durationMinutes = Math.round(durationMs / 60000);
 
     const updatedEntry: TimeEntry = {

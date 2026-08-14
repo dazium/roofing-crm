@@ -66,6 +66,8 @@ export const seedData: AppData & { tasks: ProjectTask[] } = {
   tasks: taskSeed,
   materialPrices: [
     { id: 'mat-shingles', label: 'Architectural shingles', category: 'Shingles', unit: 'bundle', price: 48, supplier: 'Manual', updatedAt: new Date().toISOString() },
+    { id: 'mat-certainteed-landmark', label: 'CertainTeed Landmark shingles', category: 'Shingles', unit: 'bundle', price: 48, supplier: 'Manual', updatedAt: new Date().toISOString() },
+    { id: 'mat-iko-dynasty', label: 'IKO Dynasty shingles', category: 'Shingles', unit: 'bundle', price: 48, supplier: 'Manual', updatedAt: new Date().toISOString() },
     { id: 'mat-starter', label: 'Starter strip', category: 'Edge Metal', unit: 'bundle', price: 55, supplier: 'Manual', updatedAt: new Date().toISOString() },
     { id: 'mat-ridge-cap', label: 'Ridge cap', category: 'Ridge', unit: 'bundle', price: 65, supplier: 'Manual', updatedAt: new Date().toISOString() },
     { id: 'mat-underlayment', label: 'Underlayment', category: 'Underlayment', unit: 'roll', price: 120, supplier: 'Manual', updatedAt: new Date().toISOString() },

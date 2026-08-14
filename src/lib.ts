@@ -372,6 +372,20 @@ function materialPriceMap(materialPrices: MaterialPriceSetting[]) {
   return Object.fromEntries(materialPrices.map((item) => [item.id, item]))
 }
 
+export function selectEstimatingShinglePrice(materialPrices: MaterialPriceSetting[]) {
+  const preferredIds = ['mat-certainteed-landmark', 'mat-iko-dynasty', 'mat-shingles']
+  const candidates = preferredIds
+    .map((id) => materialPrices.find((item) => item.id === id))
+    .filter((item): item is MaterialPriceSetting => Boolean(item))
+  const scrapedCandidates = candidates.filter((item) => item.supplier.toLowerCase().includes('scrape'))
+  const pool = scrapedCandidates.length ? scrapedCandidates : candidates
+
+  return [...pool].sort((a, b) => {
+    if (b.updatedAt !== a.updatedAt) return b.updatedAt.localeCompare(a.updatedAt)
+    return a.price - b.price
+  })[0] ?? null
+}
+
 export function buildEstimateLineItemsFromPlan(measurements: Measurements, pitch: string, materialPrices: MaterialPriceSetting[], uidFactory: () => string): {
   plan: ReturnType<typeof calcMaterialPlan>
   lineItems: EstimateLineItem[]
@@ -380,11 +394,12 @@ export function buildEstimateLineItemsFromPlan(measurements: Measurements, pitch
 } {
   const plan = calcMaterialPlan(measurements, pitch)
   const prices = materialPriceMap(materialPrices)
+  const shinglePrice = selectEstimatingShinglePrice(materialPrices)
   const labourUnitPrice = DEFAULT_LABOUR_RATE_PER_SQ
   const labourQuantity = Math.round(plan.effectiveSquares * 10) / 10
   const labourCost = Math.round(plan.effectiveSquares * labourUnitPrice)
   const lineItems: EstimateLineItem[] = [
-    { id: uidFactory(), title: 'Architectural shingles', quantity: plan.bundles, unit: 'bundles', unitPrice: prices['mat-shingles']?.price ?? 0, total: plan.bundles * (prices['mat-shingles']?.price ?? 0) },
+    { id: uidFactory(), title: shinglePrice?.label ?? 'Architectural shingles', quantity: plan.bundles, unit: 'bundles', unitPrice: shinglePrice?.price ?? 0, total: plan.bundles * (shinglePrice?.price ?? 0) },
     { id: uidFactory(), title: 'Starter strip', quantity: plan.starter, unit: 'bundles', unitPrice: prices['mat-starter']?.price ?? 0, total: plan.starter * (prices['mat-starter']?.price ?? 0) },
     { id: uidFactory(), title: 'Ridge cap', quantity: plan.ridgeCapBundles, unit: 'bundles', unitPrice: prices['mat-ridge-cap']?.price ?? 0, total: plan.ridgeCapBundles * (prices['mat-ridge-cap']?.price ?? 0) },
     { id: uidFactory(), title: 'Underlayment', quantity: plan.underlaymentRolls, unit: 'rolls', unitPrice: prices['mat-underlayment']?.price ?? 0, total: plan.underlaymentRolls * (prices['mat-underlayment']?.price ?? 0) },

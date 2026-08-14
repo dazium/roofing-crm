@@ -92,8 +92,8 @@ export const Settings: React.FC<SettingsProps> = ({
   }, null);
 
   const scrapedProductMap: Record<string, { id: string; unit: MaterialPriceSetting['unit']; label?: string }> = {
-    'CertainTeed Landmark Shingles': { id: 'mat-shingles', unit: 'bundle', label: 'CertainTeed Landmark shingles' },
-    'IKO Dynasty Shingles': { id: 'mat-shingles', unit: 'bundle', label: 'IKO Dynasty shingles' },
+    'CertainTeed Landmark Shingles': { id: 'mat-certainteed-landmark', unit: 'bundle', label: 'CertainTeed Landmark shingles' },
+    'IKO Dynasty Shingles': { id: 'mat-iko-dynasty', unit: 'bundle', label: 'IKO Dynasty shingles' },
     'Ice & Water Shield': { id: 'mat-ice-water', unit: 'roll' },
     'Ridge Vent': { id: 'mat-ridge-vent', unit: 'lf' },
     'Hip & Ridge Cap': { id: 'mat-ridge-cap', unit: 'bundle' },
@@ -591,7 +591,7 @@ export const Settings: React.FC<SettingsProps> = ({
           <div className="list-grid">
             <p>Enter the prices you want Roof Math and proposal generation to use on both desktop and Android.</p>
             <div className="status-note">
-              Shingle scrape mapping decision: both CertainTeed and IKO scrape into one editable shingles slot (`mat-shingles`). The most recent scrape wins; if timestamps tie, lower price wins.
+              Shingle scrape mapping: CertainTeed Landmark and IKO Dynasty each refresh their own editable material row. Roof Math uses the newest scraped shingle price, with the generic shingles row as the fallback.
             </div>
             <div className="detail-stack">
               <div>
