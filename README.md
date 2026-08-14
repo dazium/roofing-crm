@@ -355,7 +355,7 @@ That scraper:
 - writes results to the desktop SQLite database
 - can now be triggered from the Settings screen
 - logs visible scrape history entries in Settings
-- currently maps multiple shingle scrape products into one editable shingles slot (`mat-shingles`) for pricing simplicity
+- maps GAF, CertainTeed, and IKO shingle scrape products into separate editable material rows
 
 ## Electron packaging notes
 

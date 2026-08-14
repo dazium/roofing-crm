@@ -147,6 +147,7 @@ function getLatestMaterialPrices() {
     SELECT product, price, unit, store, scraped_at
     FROM material_prices
     WHERE product IN (
+      'GAF Timberline HDZ Shingles',
       'CertainTeed Landmark Shingles',
       'IKO Dynasty Shingles',
       'Ice & Water Shield',

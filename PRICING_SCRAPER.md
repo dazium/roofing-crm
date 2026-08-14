@@ -40,6 +40,7 @@ Use Windows Task Scheduler:
 Or run manually before building estimates.
 
 ## Supported Products
+- GAF Timberline HDZ Shingles (per square)
 - CertainTeed Landmark Shingles (per square)
 - IKO Dynasty Shingles (per square)
 - Ice & Water Shield (per roll)

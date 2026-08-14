@@ -92,6 +92,7 @@ export const Settings: React.FC<SettingsProps> = ({
   }, null);
 
   const scrapedProductMap: Record<string, { id: string; unit: MaterialPriceSetting['unit']; label?: string }> = {
+    'GAF Timberline HDZ Shingles': { id: 'mat-gaf-timberline-hdz', unit: 'bundle', label: 'GAF Timberline HDZ shingles' },
     'CertainTeed Landmark Shingles': { id: 'mat-certainteed-landmark', unit: 'bundle', label: 'CertainTeed Landmark shingles' },
     'IKO Dynasty Shingles': { id: 'mat-iko-dynasty', unit: 'bundle', label: 'IKO Dynasty shingles' },
     'Ice & Water Shield': { id: 'mat-ice-water', unit: 'roll' },
@@ -591,7 +592,7 @@ export const Settings: React.FC<SettingsProps> = ({
           <div className="list-grid">
             <p>Enter the prices you want Roof Math and proposal generation to use on both desktop and Android.</p>
             <div className="status-note">
-              Shingle scrape mapping: CertainTeed Landmark and IKO Dynasty each refresh their own editable material row. Roof Math uses the newest scraped shingle price, with the generic shingles row as the fallback.
+              Shingle scrape mapping: GAF Timberline HDZ, CertainTeed Landmark, and IKO Dynasty each refresh their own editable material row. Roof Math uses the newest scraped shingle price, with the generic shingles row as the fallback.
             </div>
             <div className="detail-stack">
               <div>

@@ -373,7 +373,7 @@ function materialPriceMap(materialPrices: MaterialPriceSetting[]) {
 }
 
 export function selectEstimatingShinglePrice(materialPrices: MaterialPriceSetting[]) {
-  const preferredIds = ['mat-certainteed-landmark', 'mat-iko-dynasty', 'mat-shingles']
+  const preferredIds = ['mat-gaf-timberline-hdz', 'mat-certainteed-landmark', 'mat-iko-dynasty', 'mat-shingles']
   const candidates = preferredIds
     .map((id) => materialPrices.find((item) => item.id === id))
     .filter((item): item is MaterialPriceSetting => Boolean(item))

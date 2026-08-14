@@ -10,7 +10,7 @@ Date: 2026-04-29
 
 ## Workflow decisions
 
-1. Multiple scraped shingle products map to one editable `mat-shingles` slot for now.
+1. Scraped shingle products map to separate editable material rows for GAF, CertainTeed, and IKO, with generic shingles retained as fallback pricing.
 2. Task workflow includes create/edit/status/checklist with sorting, and is considered sufficient for this phase.
 3. Invoice PDF export is in scope and implemented for desktop workflows.
 
