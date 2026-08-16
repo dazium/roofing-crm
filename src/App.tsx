@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { BarChart3, CalendarDays, Camera, FileText, HardHat, Home, KanbanSquare, MapPin, Package, Settings as SettingsIcon, Truck, Users, Clock3, ClipboardPlus, ClipboardCheck, PackageCheck, FileSignature, ChartNoAxesCombined } from 'lucide-react';
+import { BarChart3, CalendarDays, Camera, FileText, HardHat, Home, KanbanSquare, MapPin, Package, Settings as SettingsIcon, Truck, Users, Clock3, ClipboardPlus, ClipboardCheck, PackageCheck, FileSignature, ChartNoAxesCombined, Building2 } from 'lucide-react';
 import './App.css';
 import { Dashboard } from './sections/Dashboard';
 import { Customers } from './sections/Customers';
+import { Companies } from './sections/Companies';
 import { Inspect } from './sections/Inspect';
 import { Jobs } from './sections/Jobs';
 import { Estimates } from './sections/Estimates';
@@ -260,25 +261,8 @@ export default function App() {
 
   function exportCustomersCSV() {
     const headers = ['ID', 'Name', 'Phone', 'Email', 'Address', 'Lead Status', 'Source', 'Notes'];
-    const rows = data.customers.map(customer => [
-      customer.id,
-      customer.name,
-      customer.phone,
-      customer.email,
-      customer.address,
-      customer.leadStatus,
-      customer.source,
-      customer.notes
-    ]);
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => 
-        row.map(field => 
-          `"${String(field).replace(/"/g, '""')}"`
-        ).join(',')
-      )
-    ].join('\n');
-    
+    const rows = data.customers.map(customer => [customer.id, customer.name, customer.phone, customer.email, customer.address, customer.leadStatus, customer.source, customer.notes]);
+    const csvContent = [headers.join(','), ...rows.map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -292,26 +276,8 @@ export default function App() {
 
   function exportJobsCSV() {
     const headers = ['ID', 'Customer ID', 'Title', 'Status', 'Priority', 'Scheduled For', 'Notes', 'Crew ID', 'Created At'];
-    const rows = data.jobs.map(job => [
-      job.id,
-      job.customerId,
-      job.title,
-      job.status,
-      job.priority,
-      job.scheduledFor || '',
-      job.notes,
-      job.crewId || '',
-      job.createdAt
-    ]);
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => 
-        row.map(field => 
-          `"${String(field).replace(/"/g, '""')}"`
-        ).join(',')
-      )
-    ].join('\n');
-    
+    const rows = data.jobs.map(job => [job.id, job.customerId, job.title, job.status, job.priority, job.scheduledFor || '', job.notes, job.crewId || '', job.createdAt]);
+    const csvContent = [headers.join(','), ...rows.map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -325,28 +291,8 @@ export default function App() {
 
   function exportInvoicesCSV() {
     const headers = ['ID', 'Job ID', 'Invoice Number', 'Amount', 'Paid Amount', 'Balance Due', 'Status', 'Due Date', 'Issued Date', 'Paid Date', 'Notes'];
-    const rows = data.invoices.map(invoice => [
-      invoice.id,
-      invoice.jobId,
-      invoice.invoiceNumber,
-      invoice.amount,
-      invoice.paidAmount,
-      invoice.balanceDue,
-      invoice.status,
-      invoice.dueDate,
-      invoice.issuedDate || '',
-      invoice.paidDate || '',
-      invoice.notes
-    ]);
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => 
-        row.map(field => 
-          `"${String(field).replace(/"/g, '""')}"`
-        ).join(',')
-      )
-    ].join('\n');
-    
+    const rows = data.invoices.map(invoice => [invoice.id, invoice.jobId, invoice.invoiceNumber, invoice.amount, invoice.paidAmount, invoice.balanceDue, invoice.status, invoice.dueDate, invoice.issuedDate || '', invoice.paidDate || '', invoice.notes]);
+    const csvContent = [headers.join(','), ...rows.map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -365,28 +311,23 @@ export default function App() {
   async function importBackup(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-
     try {
       const parsed = JSON.parse(await file.text()) as Partial<AppData>;
-
       const validation = validateAppDataImport(parsed);
       if (!validation.ok) {
         const summary = validation.issues.map((issue) => `${issue.section}: ${issue.message}`).join("; ");
         setStorageMessage(`Backup import failed - ${summary}`);
         return;
       }
-
       const importedData: AppData = normalizeAppData(parsed);
-
       setData(importedData);
       applySelection(importedData, importedData.customers[0]?.id ?? null, null);
       setView('dashboard');
       setStorageMessage(`Imported backup: ${file.name}`);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown JSON error';
-        setStorageMessage(`Backup import failed - ${message}`);
-      }
-
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown JSON error';
+      setStorageMessage(`Backup import failed - ${message}`);
+    }
     event.target.value = '';
   }
 
@@ -398,47 +339,18 @@ export default function App() {
       return;
     }
     const optimizedPhoto = await optimizeInspectionPhoto(file);
-    const newPhoto: InspectionPhoto = {
-      ...optimizedPhoto,
-      id: uid(),
-      label: photoLabel.trim() || file.name,
-      category: photoCategory,
-    };
+    const newPhoto: InspectionPhoto = { ...optimizedPhoto, id: uid(), label: photoLabel.trim() || file.name, category: photoCategory };
     setData((prev) => {
       const existing = prev.inspections.find((inspection) => inspection.customerId === selectedCustomerId);
       if (existing) {
-        return {
-          ...prev,
-          inspections: prev.inspections.map((inspection) => inspection.customerId === selectedCustomerId ? { ...inspection, photos: [newPhoto, ...inspection.photos] } : inspection)
-        };
+        return { ...prev, inspections: prev.inspections.map((inspection) => inspection.customerId === selectedCustomerId ? { ...inspection, photos: [newPhoto, ...inspection.photos] } : inspection) };
       }
       const fallback: Inspection = {
-        id: uid(),
-        customerId: selectedCustomerId,
-        roofType: inspectionForm.roofType,
-        roofAge: inspectionForm.roofAge,
-        pitch: inspectionForm.pitch,
-        stories: inspectionForm.stories,
-        damageType: inspectionForm.damageType,
-        urgency: inspectionForm.urgency,
-        leakActive: inspectionForm.leakActive,
-        deckingConcern: inspectionForm.deckingConcern,
-        flashingConcern: inspectionForm.flashingConcern,
-        ventilationConcern: inspectionForm.ventilationConcern,
-        insuranceClaim: inspectionForm.insuranceClaim,
-        summary: inspectionForm.summary,
-        recommendation: inspectionForm.recommendation,
-        measurements: {
-          squares: Number(inspectionForm.squares) || 0,
-          ridgeLength: Number(inspectionForm.ridgeLength) || 0,
-          valleyLength: Number(inspectionForm.valleyLength) || 0,
-          eavesLength: Number(inspectionForm.eavesLength) || 0,
-          rakeLength: Number(inspectionForm.rakeLength) || 0,
-          wasteFactor: Number(inspectionForm.wasteFactor) || 0
-        },
-        roofPlanes: [],
-        photos: [newPhoto],
-        createdAt: new Date().toISOString()
+        id: uid(), customerId: selectedCustomerId, roofType: inspectionForm.roofType, roofAge: inspectionForm.roofAge, pitch: inspectionForm.pitch, stories: inspectionForm.stories,
+        damageType: inspectionForm.damageType, urgency: inspectionForm.urgency, leakActive: inspectionForm.leakActive, deckingConcern: inspectionForm.deckingConcern, flashingConcern: inspectionForm.flashingConcern,
+        ventilationConcern: inspectionForm.ventilationConcern, insuranceClaim: inspectionForm.insuranceClaim, summary: inspectionForm.summary, recommendation: inspectionForm.recommendation,
+        measurements: { squares: Number(inspectionForm.squares) || 0, ridgeLength: Number(inspectionForm.ridgeLength) || 0, valleyLength: Number(inspectionForm.valleyLength) || 0, eavesLength: Number(inspectionForm.eavesLength) || 0, rakeLength: Number(inspectionForm.rakeLength) || 0, wasteFactor: Number(inspectionForm.wasteFactor) || 0 },
+        roofPlanes: [], photos: [newPhoto], createdAt: new Date().toISOString()
       };
       return { ...prev, inspections: [fallback, ...prev.inspections] };
     });
@@ -456,12 +368,8 @@ export default function App() {
     if (!selectedCustomerId) return;
     setData((prev) => ({
       ...prev,
-      inspections: prev.inspections.map((inspection) => inspection.customerId === selectedCustomerId
-        ? { ...inspection, photos: inspection.photos.filter((photo) => photo.id !== photoId) }
-        : inspection),
-      damages: prev.damages.map((damage) => damage.customerId === selectedCustomerId
-        ? { ...damage, linkedPhotoIds: damage.linkedPhotoIds.filter((id) => id !== photoId) }
-        : damage),
+      inspections: prev.inspections.map((inspection) => inspection.customerId === selectedCustomerId ? { ...inspection, photos: inspection.photos.filter((photo) => photo.id !== photoId) } : inspection),
+      damages: prev.damages.map((damage) => damage.customerId === selectedCustomerId ? { ...damage, linkedPhotoIds: damage.linkedPhotoIds.filter((id) => id !== photoId) } : damage),
     }));
   }
 
@@ -469,32 +377,11 @@ export default function App() {
     if (!selectedCustomerId) return;
     const existingPlanes = selectedInspection?.roofPlanes ?? [];
     const record: Inspection = {
-      id: selectedInspection?.id || uid(),
-      customerId: selectedCustomerId,
-      roofType: inspectionForm.roofType,
-      roofAge: inspectionForm.roofAge,
-      pitch: inspectionForm.pitch,
-      stories: inspectionForm.stories,
-      damageType: inspectionForm.damageType,
-      urgency: inspectionForm.urgency,
-      leakActive: inspectionForm.leakActive,
-      deckingConcern: inspectionForm.deckingConcern,
-      flashingConcern: inspectionForm.flashingConcern,
-      ventilationConcern: inspectionForm.ventilationConcern,
-      insuranceClaim: inspectionForm.insuranceClaim,
-      summary: inspectionForm.summary,
-      recommendation: inspectionForm.recommendation,
-      measurements: {
-        squares: Number(inspectionForm.squares) || 0,
-        ridgeLength: Number(inspectionForm.ridgeLength) || 0,
-        valleyLength: Number(inspectionForm.valleyLength) || 0,
-        eavesLength: Number(inspectionForm.eavesLength) || 0,
-        rakeLength: Number(inspectionForm.rakeLength) || 0,
-        wasteFactor: Number(inspectionForm.wasteFactor) || 0
-      },
-      roofPlanes: existingPlanes,
-      photos: selectedInspection?.photos ?? [],
-      createdAt: selectedInspection?.createdAt || new Date().toISOString()
+      id: selectedInspection?.id || uid(), customerId: selectedCustomerId, roofType: inspectionForm.roofType, roofAge: inspectionForm.roofAge, pitch: inspectionForm.pitch, stories: inspectionForm.stories,
+      damageType: inspectionForm.damageType, urgency: inspectionForm.urgency, leakActive: inspectionForm.leakActive, deckingConcern: inspectionForm.deckingConcern, flashingConcern: inspectionForm.flashingConcern,
+      ventilationConcern: inspectionForm.ventilationConcern, insuranceClaim: inspectionForm.insuranceClaim, summary: inspectionForm.summary, recommendation: inspectionForm.recommendation,
+      measurements: { squares: Number(inspectionForm.squares) || 0, ridgeLength: Number(inspectionForm.ridgeLength) || 0, valleyLength: Number(inspectionForm.valleyLength) || 0, eavesLength: Number(inspectionForm.eavesLength) || 0, rakeLength: Number(inspectionForm.rakeLength) || 0, wasteFactor: Number(inspectionForm.wasteFactor) || 0 },
+      roofPlanes: existingPlanes, photos: selectedInspection?.photos ?? [], createdAt: selectedInspection?.createdAt || new Date().toISOString()
     };
     const nextData = { ...data, inspections: [...data.inspections.filter((inspection) => inspection.customerId !== selectedCustomerId), record] };
     setData(nextData);
@@ -510,6 +397,7 @@ export default function App() {
       label: 'Roofing',
       items: [
         { key: 'dashboard', label: 'Dashboard', icon: <Home size={18} /> },
+        { key: 'companies', label: 'Companies & Accounts', count: data.subcontractAccounts?.length ?? 0, icon: <Building2 size={18} /> },
         { key: 'jobs', label: 'Projects', count: data.jobs.length, icon: <KanbanSquare size={18} /> },
         { key: 'estimates', label: 'Estimates', count: data.estimates.length, icon: <FileText size={18} /> },
         { key: 'customers', label: 'Customers', count: data.customers.length, icon: <Users size={18} /> },
@@ -534,6 +422,7 @@ export default function App() {
   const activeViewDetail: Record<View, string> = {
     dashboard: 'Job board, roofing KPIs, crew schedule, weather, and activity.',
     customers: 'Manage homeowners, lead details, and property information.',
+    companies: 'Manage the larger companies that send Munro & Sons subcontract work.',
     jobs: 'Track projects from scheduled work to close-out.',
     photos: 'Capture before, damage, progress, and after photo documentation.',
     damages: 'Track roof damage findings and material allocations.',
@@ -567,34 +456,20 @@ export default function App() {
     { key: 'settings', label: 'Settings', caption: data.companyProfile.name.trim() || 'Set company profile' },
     { key: 'reports', label: '8. Financials', caption: `${data.invoices.length} invoices tracked` },
   ];
-  const visibleNavGroups = simpleView
-    ? navGroups
-      .map((group) => ({
-        ...group,
-        items: group.items,
-      }))
-      .filter((group) => group.items.length > 0)
-    : navGroups;
+  const visibleNavGroups = simpleView ? navGroups.map((group) => ({ ...group, items: group.items })).filter((group) => group.items.length > 0) : navGroups;
 
   return (
     <div className={`page-shell ${simpleView ? 'simple-view' : ''}`}>
       <aside className="sidebar">
         <div className="brand-block">
           <div className="brand-mark"><Package size={22} /></div>
-          <div>
-            <h1>Roofing CRM</h1>
-            <p>Shingle jobs, crews, estimates, and materials</p>
-          </div>
+          <div><h1>Roofing CRM</h1><p>Shingle jobs, crews, estimates, and materials</p></div>
         </div>
         {visibleNavGroups.map((group) => (
           <div className="sidebar-section" key={group.label}>
             <span className="sidebar-label">{group.label}</span>
             {group.items.map((item) => (
-              <button
-                key={item.key}
-                className={`nav-item nav-button ${item.child ? 'nav-child' : ''} ${view === item.key ? 'active' : ''}`}
-                onClick={() => setView(item.key)}
-              >
+              <button key={item.key} className={`nav-item nav-button ${item.child ? 'nav-child' : ''} ${view === item.key ? 'active' : ''}`} onClick={() => setView(item.key)}>
                 <span className="nav-label-with-icon">{item.icon}{item.label}</span>
                 {typeof item.count === 'number' ? <strong>{item.count}</strong> : <strong>•</strong>}
               </button>
@@ -605,311 +480,51 @@ export default function App() {
       <main className="main-pane">
         <div className="page-header-shell">
           <div className="page-header">
-            <div>
-              <span className="eyebrow">Roofing CRM</span>
-              <h2>{activeView?.label}</h2>
-              <p>{activeViewDetail[view]}</p>
-            </div>
+            <div><span className="eyebrow">Roofing CRM</span><h2>{activeView?.label}</h2><p>{activeViewDetail[view]}</p></div>
             <div className="header-summary">
-              <button className="ghost view-toggle" onClick={() => setSimpleView((prev) => !prev)}>
-                {simpleView ? 'Show full view' : 'Show simple view'}
-              </button>
-              <div className="header-chip">
-                <span>Open jobs</span>
-                <strong>{data.jobs.filter((job) => job.status !== 'Complete' && job.status !== 'Paid').length}</strong>
-              </div>
-              <div className="header-chip">
-                <span>Inspections</span>
-                <strong>{data.inspections.length}</strong>
-              </div>
-              <div className="header-chip">
-                <span>Storage</span>
-                <strong>{storageMode === 'sqlite-native' ? 'SQLite' : 'Browser'}</strong>
-              </div>
+              <button className="ghost view-toggle" onClick={() => setSimpleView((prev) => !prev)}>{simpleView ? 'Show full view' : 'Show simple view'}</button>
+              <div className="header-chip"><span>Open jobs</span><strong>{data.jobs.filter((job) => job.status !== 'Complete' && job.status !== 'Paid').length}</strong></div>
+              <div className="header-chip"><span>Inspections</span><strong>{data.inspections.length}</strong></div>
+              <div className="header-chip"><span>Storage</span><strong>{storageMode === 'sqlite-native' ? 'SQLite' : 'Browser'}</strong></div>
             </div>
           </div>
-          <div className="main-nav mobile-nav">
-            {visibleNavGroups.map((group) => (
-              <div className="mobile-nav-group" key={`mobile-${group.label}`}>
-                <span className="mobile-nav-label">{group.label}</span>
-                <div className="mobile-nav-items">
-                  {group.items.map((item) => (
-                    <button
-                      key={`mobile-${item.key}`}
-                      className={`main-nav-button ${item.child ? 'nav-child' : ''} ${view === item.key ? 'active' : ''}`}
-                      onClick={() => setView(item.key)}
-                    >
-                      <span className="nav-label-with-icon">{item.icon}{item.label}</span>
-                      {typeof item.count === 'number' ? <strong>{item.count}</strong> : <strong>•</strong>}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+          <div className="main-nav mobile-nav">{visibleNavGroups.map((group) => <div className="mobile-nav-group" key={`mobile-${group.label}`}><span className="mobile-nav-label">{group.label}</span><div className="mobile-nav-items">{group.items.map((item) => <button key={`mobile-${item.key}`} className={`main-nav-button ${item.child ? 'nav-child' : ''} ${view === item.key ? 'active' : ''}`} onClick={() => setView(item.key)}><span className="nav-label-with-icon">{item.icon}{item.label}</span>{typeof item.count === 'number' ? <strong>{item.count}</strong> : <strong>•</strong>}</button>)}</div></div>)}</div>
         </div>
         <div className="page-content">
           {showWorkspaceChrome && (
             <>
               <div className="context-strip">
-                <div className="context-card">
-                  <span>Current customer</span>
-                  <label className="field context-select-field">
-                    <select value={selectedCustomerId ?? ''} onChange={(event) => selectCustomer(event.target.value || null)}>
-                      <option value="">Select a customer</option>
-                      {data.customers.map((customer) => (
-                        <option key={customer.id} value={customer.id}>
-                          {customer.name} - {customer.address}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <small>{selectedCustomer?.address ?? 'Select a customer to keep jobs, inspections, and estimates in sync.'}</small>
-                </div>
-                <div className="context-card">
-                  <span>Current job</span>
-                  <label className="field context-select-field">
-                    <select value={selectedJobId ?? ''} onChange={(event) => selectJob(event.target.value || null)}>
-                      <option value="">Select a job</option>
-                      {data.jobs.filter((job) => !selectedCustomerId || job.customerId === selectedCustomerId).map((job) => (
-                        <option key={job.id} value={job.id}>
-                          {job.title}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <small>{selectedJob ? `${selectedJob.status} · ${selectedJob.scheduledFor || 'No date set'}` : 'Pick a job to build estimates and invoices.'}</small>
-                </div>
+                <div className="context-card"><span>Current customer</span><label className="field context-select-field"><select value={selectedCustomerId ?? ''} onChange={(event) => selectCustomer(event.target.value || null)}><option value="">Select a customer</option>{data.customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name} - {customer.address}</option>)}</select></label><small>{selectedCustomer?.address ?? 'Select a customer to keep jobs, inspections, and estimates in sync.'}</small></div>
+                <div className="context-card"><span>Current job</span><label className="field context-select-field"><select value={selectedJobId ?? ''} onChange={(event) => selectJob(event.target.value || null)}><option value="">Select a job</option>{data.jobs.filter((job) => !selectedCustomerId || job.customerId === selectedCustomerId).map((job) => <option key={job.id} value={job.id}>{job.title}</option>)}</select></label><small>{selectedJob ? `${selectedJob.status} · ${selectedJob.scheduledFor || 'No date set'}` : 'Pick a job to build estimates and invoices.'}</small></div>
               </div>
-              {view === 'dashboard' && (
-                <div className="workflow-strip">
-                  {workflowSteps.map((step) => (
-                    <button
-                      key={step.key}
-                      className={`workflow-step ${view === step.key ? 'active' : ''}`}
-                      onClick={() => setView(step.key)}
-                    >
-                      <span>{step.label}</span>
-                      <strong>{step.caption}</strong>
-                    </button>
-                  ))}
-                </div>
-              )}
+              {view === 'dashboard' && <div className="workflow-strip">{workflowSteps.map((step) => <button key={step.key} className={`workflow-step ${view === step.key ? 'active' : ''}`} onClick={() => setView(step.key)}><span>{step.label}</span><strong>{step.caption}</strong></button>)}</div>}
             </>
           )}
 
-          {view === 'dashboard' && (
-            <Dashboard
-              data={data}
-              setData={setData}
-              selectedCustomerId={selectedCustomerId}
-              selectedJobId={selectedJobId}
-              setView={setView}
-              onOpenCustomer={(customerId) => {
-                setView('customers');
-                selectCustomer(customerId);
-              }}
-              onOpenJob={(jobId) => {
-                setView('jobs');
-                selectJob(jobId);
-              }}
-              onOpenEstimates={() => setView('estimates')}
-            />
-          )}
-
-          {view === 'customers' && (
-            <Customers
-              data={data}
-              setData={setData}
-              selectedCustomerId={selectedCustomerId}
-              selectCustomer={selectCustomer}
-              selectJob={selectJob}
-              search={search}
-              setSearch={setSearch}
-              setView={setView}
-            />
-          )}
-
-          {view === 'inspect' && (
-            <Inspect
-              key={selectedCustomerId ?? 'no-customer'}
-              data={data}
-              selectedCustomerId={selectedCustomerId}
-              selectCustomer={selectCustomer}
-              photoCategory={photoCategory}
-              setPhotoCategory={setPhotoCategory}
-              photoLabel={photoLabel}
-              setPhotoLabel={setPhotoLabel}
-              inspectionForm={inspectionForm}
-              setInspectionForm={setInspectionForm}
-              handlePhotoUpload={handlePhotoUpload}
-              removeInspectionPhoto={removeInspectionPhoto}
-              saveInspection={saveInspection}
-              goToProposal={() => setView('estimates')}
-              galleryInputRef={galleryInputRef}
-              cameraInputRef={cameraInputRef}
-            />
-          )}
-
-          {view === 'jobs' && (
-            <Jobs
-              data={data}
-              setData={setData}
-              selectedCustomerId={selectedCustomerId}
-              selectCustomer={selectCustomer}
-              selectedJobId={selectedJobId}
-              selectJob={selectJob}
-              jobSearch={jobSearch}
-              setJobSearch={setJobSearch}
-              setView={setView}
-            />
-          )}
-
-          {view === 'photos' && (
-            <Photos
-              data={data}
-              selectedCustomerId={selectedCustomerId}
-              selectCustomer={selectCustomer}
-              selectedJobId={selectedJobId}
-              selectJob={selectJob}
-              photoCategory={photoCategory}
-              setPhotoCategory={setPhotoCategory}
-              photoLabel={photoLabel}
-              setPhotoLabel={setPhotoLabel}
-              setData={setData}
-              handlePhotoUpload={handlePhotoUpload}
-              removeInspectionPhoto={removeInspectionPhoto}
-              galleryInputRef={galleryInputRef}
-              cameraInputRef={cameraInputRef}
-              setView={setView}
-            />
-          )}
-
-          {view === 'damages' && (
-            <Damages
-              data={data}
-              setData={setData}
-              selectedCustomerId={selectedCustomerId}
-              selectCustomer={selectCustomer}
-              selectedJobId={selectedJobId}
-              selectJob={selectJob}
-            />
-          )}
-
-          {view === 'estimates' && (
-            <Estimates
-              data={data}
-              setData={setData}
-              selectedCustomerId={selectedCustomerId}
-              selectCustomer={selectCustomer}
-              selectedJobId={selectedJobId}
-              selectJob={selectJob}
-              estimateForm={estimateForm}
-              setEstimateForm={setEstimateForm}
-              selectedInspection={selectedInspection}
-              goToJobs={() => setView('jobs')}
-              goToBilling={() => setView('invoices')}
-            />
-          )}
-
-          {view === 'invoices' && (
-            <Invoices
-              data={data}
-              setData={setData}
-              selectedCustomerId={selectedCustomerId}
-              selectCustomer={selectCustomer}
-              selectedJobId={selectedJobId}
-              selectJob={selectJob}
-            />
-          )}
-
-          {view === 'tasks' && (
-            <Tasks
-              data={data}
-              setData={setData}
-              selectedCustomerId={selectedCustomerId}
-              selectCustomer={selectCustomer}
-              selectedJobId={selectedJobId}
-              selectJob={selectJob}
-              setView={setView}
-            />
-          )}
-
-          {(view === 'settings' || view === 'materials') && (
-            <Settings
-              data={data}
-              setData={setData}
-              companyProfile={data.companyProfile}
-              storageMode={storageMode}
-              storageMessage={storageMessage}
-              storageMeta={storageMeta}
-              exportBackup={exportBackup}
-              importInputRef={importInputRef}
-              handleImport={importBackup}
-            />
-          )}
-
-          {view === 'reports' && (
-            <Reports
-              data={data}
-              setView={setView}
-            />
-          )}
-
+          {view === 'dashboard' && <Dashboard data={data} setData={setData} selectedCustomerId={selectedCustomerId} selectedJobId={selectedJobId} setView={setView} onOpenCustomer={(customerId) => { setView('customers'); selectCustomer(customerId); }} onOpenJob={(jobId) => { setView('jobs'); selectJob(jobId); }} onOpenEstimates={() => setView('estimates')} />}
+          {view === 'customers' && <Customers data={data} setData={setData} selectedCustomerId={selectedCustomerId} selectCustomer={selectCustomer} selectJob={selectJob} search={search} setSearch={setSearch} setView={setView} />}
+          {view === 'companies' && <Companies data={data} setData={setData} />}
+          {view === 'inspect' && <Inspect key={selectedCustomerId ?? 'no-customer'} data={data} selectedCustomerId={selectedCustomerId} selectCustomer={selectCustomer} photoCategory={photoCategory} setPhotoCategory={setPhotoCategory} photoLabel={photoLabel} setPhotoLabel={setPhotoLabel} inspectionForm={inspectionForm} setInspectionForm={setInspectionForm} handlePhotoUpload={handlePhotoUpload} removeInspectionPhoto={removeInspectionPhoto} saveInspection={saveInspection} goToProposal={() => setView('estimates')} galleryInputRef={galleryInputRef} cameraInputRef={cameraInputRef} />}
+          {view === 'jobs' && <Jobs data={data} setData={setData} selectedCustomerId={selectedCustomerId} selectCustomer={selectCustomer} selectedJobId={selectedJobId} selectJob={selectJob} jobSearch={jobSearch} setJobSearch={setJobSearch} setView={setView} />}
+          {view === 'photos' && <Photos data={data} selectedCustomerId={selectedCustomerId} selectCustomer={selectCustomer} selectedJobId={selectedJobId} selectJob={selectJob} photoCategory={photoCategory} setPhotoCategory={setPhotoCategory} photoLabel={photoLabel} setPhotoLabel={setPhotoLabel} setData={setData} handlePhotoUpload={handlePhotoUpload} removeInspectionPhoto={removeInspectionPhoto} galleryInputRef={galleryInputRef} cameraInputRef={cameraInputRef} setView={setView} />}
+          {view === 'damages' && <Damages data={data} setData={setData} selectedCustomerId={selectedCustomerId} selectCustomer={selectCustomer} selectedJobId={selectedJobId} selectJob={selectJob} />}
+          {view === 'estimates' && <Estimates data={data} setData={setData} selectedCustomerId={selectedCustomerId} selectCustomer={selectCustomer} selectedJobId={selectedJobId} selectJob={selectJob} estimateForm={estimateForm} setEstimateForm={setEstimateForm} selectedInspection={selectedInspection} goToJobs={() => setView('jobs')} goToBilling={() => setView('invoices')} />}
+          {view === 'invoices' && <Invoices data={data} setData={setData} selectedCustomerId={selectedCustomerId} selectCustomer={selectCustomer} selectedJobId={selectedJobId} selectJob={selectJob} />}
+          {view === 'tasks' && <Tasks data={data} setData={setData} selectedCustomerId={selectedCustomerId} selectCustomer={selectCustomer} selectedJobId={selectedJobId} selectJob={selectJob} setView={setView} />}
+          {(view === 'settings' || view === 'materials') && <Settings data={data} setData={setData} companyProfile={data.companyProfile} storageMode={storageMode} storageMessage={storageMessage} storageMeta={storageMeta} exportBackup={exportBackup} importInputRef={importInputRef} handleImport={importBackup} />}
+          {view === 'reports' && <Reports data={data} setView={setView} />}
           {view === 'timesheets' && <Timesheets data={data} onUpdate={setData} />}
           {view === 'change-orders' && <ChangeOrders data={data} onUpdate={setData} selectedJobId={selectedJobId} selectJob={selectJob} />}
           {view === 'production' && <ProductionPlan data={data} onUpdate={setData} selectedJobId={selectedJobId} selectJob={selectJob} />}
           {view === 'fulfillment' && <MaterialFulfillment data={data} onUpdate={setData} selectedJobId={selectedJobId} selectJob={selectJob} />}
           {view === 'approvals' && <Approvals data={data} onUpdate={setData} selectedJobId={selectedJobId} selectJob={selectJob} />}
           {view === 'profitability' && <Profitability data={data} selectedJobId={selectedJobId} selectJob={selectJob} />}
-
-          {view === 'calendar' && (
-            <Calendar
-              data={data}
-              setData={setData}
-              selectedCustomerId={selectedCustomerId}
-              selectCustomer={selectCustomer}
-              selectedJobId={selectedJobId}
-              selectJob={selectJob}
-            />
-          )}
-
-          {view === 'locations' && (
-            <Locations
-              data={data}
-              selectedCustomerId={selectedCustomerId}
-              selectCustomer={selectCustomer}
-              selectedJobId={selectedJobId}
-              selectJob={selectJob}
-              setView={setView}
-            />
-          )}
-
-          {view === 'crews' && (
-            <Crews
-              data={data}
-              setData={setData}
-            />
-          )}
-
-          {view === 'crew-mode' && (
-            <CrewMode
-              data={data}
-              selectedJobId={selectedJobId}
-              selectJob={selectJob}
-              setView={setView}
-              setPhotoCategory={setPhotoCategory}
-              setPhotoLabel={setPhotoLabel}
-              cameraInputRef={cameraInputRef}
-              handlePhotoUpload={handlePhotoUpload}
-              onDataUpdate={setData}
-            />
-          )}
+          {view === 'calendar' && <Calendar data={data} setData={setData} selectedCustomerId={selectedCustomerId} selectCustomer={selectCustomer} selectedJobId={selectedJobId} selectJob={selectJob} />}
+          {view === 'locations' && <Locations data={data} selectedCustomerId={selectedCustomerId} selectCustomer={selectCustomer} selectedJobId={selectedJobId} selectJob={selectJob} setView={setView} />}
+          {view === 'crews' && <Crews data={data} setData={setData} />}
+          {view === 'crew-mode' && <CrewMode data={data} selectedJobId={selectedJobId} selectJob={selectJob} setView={setView} />}
         </div>
       </main>
     </div>
   );
 }
-
-
-
