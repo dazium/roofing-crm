@@ -14,10 +14,11 @@ This file tracks implementation against the subcontractor-centric operations sco
 - [x] Add optional subcontract data collections to `AppData` so existing saved CRM data remains compatible.
 - [x] Add reusable helper functions for account creation, account history queries, financial summaries, dashboard summaries, and work-order status validation.
 - [x] Add unit tests for the new workflow helpers.
-- [ ] Add the Companies & Accounts navigation section.
-- [ ] Add the subcontractor dashboard UI.
-- [ ] Add company/contact CRUD UI.
+- [x] Add the Companies & Accounts navigation section.
+- [x] Add the initial subcontractor account workspace UI.
+- [x] Add company/contact CRUD UI.
 - [ ] Add work-order CRUD UI.
+- [ ] Run the application build/test suite after UI wiring.
 
 ## Phase 2 — Operations
 
@@ -36,7 +37,7 @@ This file tracks implementation against the subcontractor-centric operations sco
 - [ ] Add subcontract account receivables view.
 - [ ] Add payment recording against subcontract invoices.
 - [ ] Add aging buckets.
-- [ ] Add company financial summary UI.
+- [x] Add company financial summary UI.
 
 ## Phase 4 — Reporting
 
