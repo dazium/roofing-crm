@@ -53,12 +53,13 @@ export const Companies: React.FC<CompaniesProps> = ({ data, setData }) => {
     setContactForm({ role: 'Other', active: true })
   }
 
-  function updateAccount(field: keyof SubcontractorAccount, value: string) {
+  function updateAccount(field: keyof SubcontractorAccount, value: string | number) {
     if (!selected) return
+    const patch = { [field]: value } as Partial<SubcontractorAccount>
     setData((prev) => ({
       ...prev,
       subcontractAccounts: (prev.subcontractAccounts ?? []).map((account) => account.id === selected.id
-        ? { ...account, [field]: value, updatedAt: new Date().toISOString() }
+        ? { ...account, ...patch, updatedAt: new Date().toISOString() }
         : account),
     }))
   }
@@ -133,7 +134,7 @@ export const Companies: React.FC<CompaniesProps> = ({ data, setData }) => {
                 </div>
                 <div className="split-grid">
                   <label className="field"><span>Payment terms</span><input value={selected.paymentTerms} onChange={(e) => updateAccount('paymentTerms', e.target.value)} /></label>
-                  <label className="field"><span>Standard labour rate</span><input type="number" value={selected.standardLabourRate ?? ''} onChange={(e) => updateAccount('standardLabourRate', e.target.value)} /></label>
+                  <label className="field"><span>Standard labour rate</span><input type="number" value={selected.standardLabourRate ?? ''} onChange={(e) => updateAccount('standardLabourRate', Number(e.target.value))} /></label>
                 </div>
               </div>
             </div>
