@@ -27,8 +27,8 @@ This file tracks implementation against the subcontractor-centric operations sco
 ## Phase 2 — Operations
 
 - [x] Connect work orders to existing Jobs at creation time.
-- [ ] Add scheduling workflow for subcontract work orders.
-- [ ] Add crew assignment directly from a work order.
+- [x] Add scheduling workflow for subcontract work orders.
+- [x] Add crew assignment directly from a work order.
 - [ ] Add job completion workflow.
 - [ ] Add completion photos and documentation.
 - [x] Add callback workflow foundation.
