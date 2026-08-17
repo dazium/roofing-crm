@@ -29,8 +29,8 @@ This file tracks implementation against the subcontractor-centric operations sco
 - [x] Connect work orders to existing Jobs at creation time.
 - [x] Add scheduling workflow for subcontract work orders.
 - [x] Add crew assignment directly from a work order.
-- [ ] Add job completion workflow.
-- [ ] Add completion photos and documentation.
+- [x] Add job completion workflow.
+- [x] Add completion photos and documentation.
 - [x] Add callback workflow foundation.
 - [ ] Add blueprint/specification document handling.
 
