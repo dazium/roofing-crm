@@ -17,17 +17,21 @@ This file tracks implementation against the subcontractor-centric operations sco
 - [x] Add the Companies & Accounts navigation section.
 - [x] Add the initial subcontractor account workspace UI.
 - [x] Add company/contact CRUD UI.
-- [ ] Add work-order CRUD UI.
+- [x] Add work-order data model and lifecycle workspace UI.
+- [x] Add work-order creation and editing UI.
+- [x] Add work-order search and company/status filtering.
+- [x] Add work-order status progression controls.
+- [x] Add callback-required flagging.
 - [ ] Run the application build/test suite after UI wiring.
 
 ## Phase 2 — Operations
 
-- [ ] Connect work orders to existing Jobs.
+- [x] Connect work orders to existing Jobs at creation time.
 - [ ] Add scheduling workflow for subcontract work orders.
 - [ ] Add crew assignment directly from a work order.
 - [ ] Add job completion workflow.
 - [ ] Add completion photos and documentation.
-- [ ] Add callback workflow.
+- [x] Add callback workflow foundation.
 - [ ] Add blueprint/specification document handling.
 
 ## Phase 3 — Financial
