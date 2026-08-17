@@ -1,6 +1,6 @@
 export type LeadStatus = 'New Lead' | 'Contacted' | 'Inspection Scheduled' | 'Estimate Sent' | 'Won' | 'Lost'
 export type JobStatus = 'Scheduled' | 'In Progress' | 'Awaiting Final Review' | 'Complete' | 'Invoiced' | 'Paid'
-export type View = 'dashboard' | 'customers' | 'companies' | 'inspect' | 'jobs' | 'photos' | 'damages' | 'estimates' | 'invoices' | 'tasks' | 'calendar' | 'locations' | 'crews' | 'crew-mode' | 'materials' | 'settings' | 'reports' | 'timesheets' | 'change-orders' | 'production' | 'fulfillment' | 'approvals' | 'profitability'
+export type View = 'dashboard' | 'customers' | 'companies' | 'work-orders' | 'inspect' | 'jobs' | 'photos' | 'damages' | 'estimates' | 'invoices' | 'tasks' | 'calendar' | 'locations' | 'crews' | 'crew-mode' | 'materials' | 'settings' | 'reports' | 'timesheets' | 'change-orders' | 'production' | 'fulfillment' | 'approvals' | 'profitability'
 export type DamageType = 'Leak' | 'Shingle Damage' | 'Flashing' | 'Ventilation' | 'Animal Damage' | 'Storm Damage'
 export type Urgency = 'Low' | 'Medium' | 'High' | 'Emergency'
 export type PhotoCategory = 'Before' | 'Damage' | 'Progress' | 'After'
@@ -264,14 +264,14 @@ export type DamageRecord = {
   customerId: string;
   jobId?: string;
   category: DamageCategory;
-  severity: DamageSeverity;
-  description: string;
-  location?: string;
-  estimatedCost?: number;
-  linkedPhotoIds: string[];
-  materials: DamageMaterialItem[];
-  createdAt: string;
-  updatedAt: string;
+  severity: DamageSeverity
+  description: string
+  location?: string
+  estimatedCost?: number
+  linkedPhotoIds: string[]
+  materials: DamageMaterialItem[]
+  createdAt: string
+  updatedAt: string
 }
 export type AppData = {
   companyProfile: CompanyProfile;
