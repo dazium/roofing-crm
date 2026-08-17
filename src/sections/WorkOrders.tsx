@@ -20,6 +20,7 @@ export const WorkOrders: React.FC<WorkOrdersProps> = ({ data, setData, selectedJ
   const accounts = getSubcontractAccounts(data)
   const workOrders = data.workOrders ?? []
   const sites = data.jobSites ?? []
+  const documents = data.subcontractDocuments ?? []
   const [selectedId, setSelectedId] = useState(workOrders[0]?.id ?? null)
   const [accountFilter, setAccountFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | 'all'>('all')
@@ -30,6 +31,7 @@ export const WorkOrders: React.FC<WorkOrdersProps> = ({ data, setData, selectedJ
 
   const selected = workOrders.find((order) => order.id === selectedId) ?? null
   const selectedSite = selected?.jobSiteId ? sites.find((item) => item.id === selected.jobSiteId) ?? null : null
+  const completionPhotos = selected ? documents.filter((doc) => doc.accountId === selected.accountId && doc.name.startsWith(`Completion Photo — ${selected.workOrderNumber}`)) : []
   const filtered = useMemo(() => workOrders.filter((order) => {
     const matchesAccount = accountFilter === 'all' || order.accountId === accountFilter
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter
@@ -64,6 +66,27 @@ export const WorkOrders: React.FC<WorkOrdersProps> = ({ data, setData, selectedJ
     if (!selected || !canAdvanceWorkOrderStatus(selected.status, next)) return
     updateOrder({ status: next })
   }
+  function completeWorkOrder() {
+    if (!selected) return
+    const now = new Date().toISOString()
+    updateOrder({ status: 'Completed', completionDate: now.slice(0, 10) })
+    if (selected.jobId) {
+      setData((prev) => ({ ...prev, jobs: prev.jobs.map((job) => job.id === selected.jobId ? { ...job, status: 'Complete' } : job) }))
+    }
+  }
+  function uploadCompletionPhoto(event: React.ChangeEvent<HTMLInputElement>) {
+    if (!selected) return
+    const files = Array.from(event.target.files ?? [])
+    if (!files.length) return
+    const now = new Date().toISOString()
+    Promise.all(files.map((file) => new Promise<{ name: string; fileName: string; mimeType: string; sizeBytes: number; dataUrl: string }>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve({ name: `Completion Photo — ${selected.workOrderNumber} — ${file.name}`, fileName: file.name, mimeType: file.type, sizeBytes: file.size, dataUrl: String(reader.result) })
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    }))).then((items) => setData((prev) => ({ ...prev, subcontractDocuments: [...(prev.subcontractDocuments ?? []), ...items.map((item) => ({ id: crypto.randomUUID(), accountId: selected.accountId, name: item.name, fileName: item.fileName, mimeType: item.mimeType, sizeBytes: item.sizeBytes, category: 'Other' as const, dataUrl: item.dataUrl, createdAt: now }))] }))).catch(() => undefined)
+    event.target.value = ''
+  }
   const accountName = (accountId: string) => accounts.find((account) => account.id === accountId)?.name ?? 'Unknown company'
   const crewName = (crewId?: string) => data.crews.find((crew) => crew.id === crewId)?.name ?? 'Unassigned'
   const linkedJob = selected?.jobId ? data.jobs.find((job) => job.id === selected.jobId) : null
@@ -87,6 +110,8 @@ export const WorkOrders: React.FC<WorkOrdersProps> = ({ data, setData, selectedJ
         <div className="detail-stack"><h4>Job site</h4>{selectedSite ? <><label className="field"><span>Address</span><input value={selectedSite.address} onChange={(e) => updateSite({ address: e.target.value })} /></label><div className="split-grid"><label className="field"><span>Site contact</span><input value={selectedSite.siteContact} onChange={(e) => updateSite({ siteContact: e.target.value })} /></label><label className="field"><span>Site phone</span><input value={selectedSite.sitePhone} onChange={(e) => updateSite({ sitePhone: e.target.value })} /></label></div><div className="split-grid"><label className="field"><span>Access</span><textarea rows={3} value={selectedSite.accessInstructions} onChange={(e) => updateSite({ accessInstructions: e.target.value })} /></label><label className="field"><span>Parking</span><textarea rows={3} value={selectedSite.parkingInformation} onChange={(e) => updateSite({ parkingInformation: e.target.value })} /></label></div><div className="split-grid"><label className="field"><span>Safety hazards</span><textarea rows={3} value={selectedSite.safetyHazards} onChange={(e) => updateSite({ safetyHazards: e.target.value })} /></label><label className="field"><span>Required equipment</span><textarea rows={3} value={selectedSite.requiredEquipment} onChange={(e) => updateSite({ requiredEquipment: e.target.value })} /></label></div></> : <div className="empty-state">No job site has been created for this work order.</div>}
         <h4>Schedule & crew</h4><div className="split-grid"><label className="field"><span>Scheduled date</span><input type="date" value={selected.scheduledDate ?? ''} onChange={(e) => updateOrder({ scheduledDate: e.target.value, status: e.target.value ? (selected.crewId ? 'Assigned' : 'Scheduled') : selected.status })} /></label><label className="field"><span>Assigned crew</span><select value={selected.crewId ?? ''} onChange={(e) => { const crewId = e.target.value || undefined; updateOrder({ crewId, status: selected.scheduledDate ? (crewId ? 'Assigned' : 'Scheduled') : selected.status }) }}><option value="">Unassigned</option>{data.crews.filter((crew) => crew.status === 'Active').map((crew) => <option key={crew.id} value={crew.id}>{crew.name}{crew.crewLead ? ` — ${crew.crewLead}` : ''}</option>)}</select></label></div><div className="split-grid"><label className="field"><span>Start time</span><input type="time" value={selected.scheduledStartTime ?? ''} onChange={(e) => updateOrder({ scheduledStartTime: e.target.value })} /></label><label className="field"><span>End time</span><input type="time" value={selected.scheduledEndTime ?? ''} onChange={(e) => updateOrder({ scheduledEndTime: e.target.value })} /></label></div><div className="list-row"><div><strong>{selected.scheduledDate || 'Not scheduled'}</strong><span>{selected.scheduledStartTime || '--:--'} to {selected.scheduledEndTime || '--:--'} · {crewName(selected.crewId)}</span></div></div>
         <h4>Scope & production instructions</h4><label className="field"><span>Scope of work</span><textarea rows={8} value={selected.scopeOfWork} onChange={(e) => updateOrder({ scopeOfWork: e.target.value })} /></label><div className="split-grid"><label className="field"><span>Materials</span><textarea rows={5} value={selected.materials} onChange={(e) => updateOrder({ materials: e.target.value })} /></label><label className="field"><span>Labour requirements</span><textarea rows={5} value={selected.labourRequirements} onChange={(e) => updateOrder({ labourRequirements: e.target.value })} /></label></div><div className="split-grid"><label className="field"><span>Crew requirements</span><textarea rows={4} value={selected.crewRequirements} onChange={(e) => updateOrder({ crewRequirements: e.target.value })} /></label><label className="field"><span>Special instructions</span><textarea rows={4} value={selected.specialInstructions} onChange={(e) => updateOrder({ specialInstructions: e.target.value })} /></label></div><div className="split-grid"><label className="field"><span>Agreed price</span><input type="number" value={selected.agreedPrice} onChange={(e) => updateOrder({ agreedPrice: Number(e.target.value) })} /></label><label className="field"><span>Deadline</span><input type="date" value={selected.deadline ?? ''} onChange={(e) => updateOrder({ deadline: e.target.value })} /></label></div>
+        <h4>Completion</h4><div className="split-grid"><label className="field"><span>Completion date</span><input type="date" value={selected.completionDate ?? ''} onChange={(e) => updateOrder({ completionDate: e.target.value })} /></label><label className="field"><span>Callback required</span><select value={selected.callbackRequired ? 'Yes' : 'No'} onChange={(e) => updateOrder({ callbackRequired: e.target.value === 'Yes' })}><option>No</option><option>Yes</option></select></label></div><label className="field"><span>Completion notes</span><textarea rows={4} value={selected.completionNotes ?? ''} onChange={(e) => updateOrder({ completionNotes: e.target.value })} placeholder="What was completed, quantities, site condition, customer/GC notes..." /></label><label className="field"><span>Deficiency notes</span><textarea rows={4} value={selected.deficiencyNotes ?? ''} onChange={(e) => updateOrder({ deficiencyNotes: e.target.value })} placeholder="Outstanding deficiencies, return visit requirements, damage, or exceptions..." /></label><div className="split-grid"><button className="primary" disabled={selected.status === 'Completed' || selected.status === 'Ready for Invoice' || selected.status === 'Invoiced' || selected.status === 'Paid' || selected.status === 'Closed'} onClick={completeWorkOrder}>Mark work completed</button><label className="secondary"><span>Add completion photos</span><input type="file" accept="image/*" multiple onChange={uploadCompletionPhoto} /></label></div>
+        {completionPhotos.length > 0 && <div className="list-stack">{completionPhotos.map((photo) => <div className="list-row" key={photo.id}><div><strong>{photo.fileName}</strong><span>Completion documentation · {new Date(photo.createdAt).toLocaleString()}</span></div><a href={photo.dataUrl} target="_blank" rel="noreferrer">View</a></div>)}</div>}
       </div></div>
       <div className="card"><div className="section-head"><div><h3>Linked project</h3><span>Connect this subcontract order to existing production.</span></div></div>{linkedJob ? <div className="list-row"><div><strong>{linkedJob.title}</strong><span>{linkedJob.status}</span></div><button className="secondary" onClick={() => { selectJob(linkedJob.id); setView('jobs') }}>Open job</button></div> : <div className="empty-state">This work order is not linked to a CRM job yet.</div>}</div>
     </> : <div className="card empty-state">Create or select a subcontract work order.</div>}</div>
