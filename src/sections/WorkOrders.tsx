@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import type { AppData, SubcontractorAccount, WorkOrder, WorkOrderStatus } from '../types'
-import { canAdvanceWorkOrderStatus, createSubcontractorAccount, getSubcontractAccounts, getWorkOrdersForAccount, WORK_ORDER_STATUS_FLOW } from '../subcontractor'
+import type { AppData, JobSite, WorkOrder, WorkOrderStatus } from '../types'
+import { canAdvanceWorkOrderStatus, getSubcontractAccounts, WORK_ORDER_STATUS_FLOW } from '../subcontractor'
 
 type WorkOrdersProps = {
   data: AppData
@@ -12,27 +12,29 @@ type WorkOrdersProps = {
 
 const INITIAL_FORM: Partial<WorkOrder> = {
   workOrderNumber: '', purchaseOrderNumber: '', jobType: 'Roofing', dateReceived: new Date().toISOString().slice(0, 10),
-  requestedStartDate: '', deadline: '', scopeOfWork: '', materials: '', labourRequirements: '', crewRequirements: '',
-  specialInstructions: '', estimatedValue: 0, agreedPrice: 0, status: 'New',
+  requestedStartDate: '', deadline: '', scheduledDate: '', scheduledStartTime: '', scheduledEndTime: '', scopeOfWork: '', materials: '', labourRequirements: '', crewRequirements: '', specialInstructions: '', estimatedValue: 0, agreedPrice: 0, status: 'New',
 }
+const INITIAL_SITE: Partial<JobSite> = { address: '', propertyType: 'Residential', siteContact: '', sitePhone: '', accessInstructions: '', parkingInformation: '', roofInformation: '', safetyHazards: '', requiredEquipment: '', notes: '' }
 
 export const WorkOrders: React.FC<WorkOrdersProps> = ({ data, setData, selectedJobId, selectJob, setView }) => {
   const accounts = getSubcontractAccounts(data)
   const workOrders = data.workOrders ?? []
+  const sites = data.jobSites ?? []
   const [selectedId, setSelectedId] = useState(workOrders[0]?.id ?? null)
   const [accountFilter, setAccountFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | 'all'>('all')
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<Partial<WorkOrder>>(INITIAL_FORM)
+  const [site, setSite] = useState<Partial<JobSite>>(INITIAL_SITE)
 
   const selected = workOrders.find((order) => order.id === selectedId) ?? null
+  const selectedSite = selected?.jobSiteId ? sites.find((item) => item.id === selected.jobSiteId) ?? null : null
   const filtered = useMemo(() => workOrders.filter((order) => {
     const matchesAccount = accountFilter === 'all' || order.accountId === accountFilter
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter
     const q = search.trim().toLowerCase()
-    const matchesSearch = !q || [order.workOrderNumber, order.purchaseOrderNumber, order.jobType, order.scopeOfWork, order.specialInstructions]
-      .filter(Boolean).some((value) => String(value).toLowerCase().includes(q))
+    const matchesSearch = !q || [order.workOrderNumber, order.purchaseOrderNumber, order.jobType, order.scopeOfWork, order.specialInstructions].filter(Boolean).some((value) => String(value).toLowerCase().includes(q))
     return matchesAccount && matchesStatus && matchesSearch
   }), [workOrders, accountFilter, statusFilter, search])
 
@@ -40,96 +42,53 @@ export const WorkOrders: React.FC<WorkOrdersProps> = ({ data, setData, selectedJ
     if (!form.accountId || !form.scopeOfWork?.trim()) return
     const now = new Date().toISOString()
     const generatedNumber = form.workOrderNumber?.trim() || `WO-${new Date().getFullYear()}-${String(workOrders.length + 1).padStart(4, '0')}`
+    const siteRecord: JobSite | undefined = site.address?.trim() ? {
+      id: crypto.randomUUID(), accountId: form.accountId, address: site.address.trim(), propertyType: site.propertyType || 'Residential', siteContact: site.siteContact || '', sitePhone: site.sitePhone || '', accessInstructions: site.accessInstructions || '', parkingInformation: site.parkingInformation || '', roofInformation: site.roofInformation || '', safetyHazards: site.safetyHazards || '', requiredEquipment: site.requiredEquipment || '', notes: site.notes || '', createdAt: now, updatedAt: now,
+    } : undefined
     const order: WorkOrder = {
-      id: crypto.randomUUID(),
-      accountId: form.accountId,
-      jobId: selectedJobId ?? undefined,
-      jobSiteId: form.jobSiteId,
-      workOrderNumber: generatedNumber,
-      purchaseOrderNumber: form.purchaseOrderNumber,
-      contactId: form.contactId,
-      dateReceived: form.dateReceived || now.slice(0, 10),
-      requestedStartDate: form.requestedStartDate,
-      deadline: form.deadline,
-      jobType: form.jobType || 'Roofing',
-      scopeOfWork: form.scopeOfWork,
-      materials: form.materials || '',
-      labourRequirements: form.labourRequirements || '',
-      crewRequirements: form.crewRequirements || '',
-      specialInstructions: form.specialInstructions || '',
-      estimatedValue: Number(form.estimatedValue || 0),
-      agreedPrice: Number(form.agreedPrice || 0),
-      status: 'New',
-      createdAt: now,
-      updatedAt: now,
+      id: crypto.randomUUID(), accountId: form.accountId, jobId: selectedJobId ?? undefined, jobSiteId: siteRecord?.id, crewId: form.crewId, workOrderNumber: generatedNumber, purchaseOrderNumber: form.purchaseOrderNumber, contactId: form.contactId, dateReceived: form.dateReceived || now.slice(0, 10), requestedStartDate: form.requestedStartDate, deadline: form.deadline, scheduledDate: form.scheduledDate, scheduledStartTime: form.scheduledStartTime, scheduledEndTime: form.scheduledEndTime, jobType: form.jobType || 'Roofing', scopeOfWork: form.scopeOfWork, materials: form.materials || '', labourRequirements: form.labourRequirements || '', crewRequirements: form.crewRequirements || '', specialInstructions: form.specialInstructions || '', estimatedValue: Number(form.estimatedValue || 0), agreedPrice: Number(form.agreedPrice || 0), status: form.scheduledDate ? (form.crewId ? 'Assigned' : 'Scheduled') : 'New', createdAt: now, updatedAt: now,
     }
-    setData((prev) => ({ ...prev, workOrders: [order, ...(prev.workOrders ?? [])] }))
-    setSelectedId(order.id)
-    setShowForm(false)
-    setForm(INITIAL_FORM)
+    setData((prev) => ({ ...prev, jobSites: siteRecord ? [siteRecord, ...(prev.jobSites ?? [])] : (prev.jobSites ?? []), workOrders: [order, ...(prev.workOrders ?? [])] }))
+    setSelectedId(order.id); setShowForm(false); setForm(INITIAL_FORM); setSite(INITIAL_SITE)
   }
 
   function updateOrder(patch: Partial<WorkOrder>) {
     if (!selected) return
     setData((prev) => ({ ...prev, workOrders: (prev.workOrders ?? []).map((order) => order.id === selected.id ? { ...order, ...patch, updatedAt: new Date().toISOString() } : order) }))
   }
-
+  function updateSite(patch: Partial<JobSite>) {
+    if (!selectedSite || !selected) return
+    setData((prev) => ({ ...prev, jobSites: (prev.jobSites ?? []).map((item) => item.id === selectedSite.id ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item) }))
+  }
   function advanceStatus(next: WorkOrderStatus) {
     if (!selected || !canAdvanceWorkOrderStatus(selected.status, next)) return
     updateOrder({ status: next })
   }
-
   const accountName = (accountId: string) => accounts.find((account) => account.id === accountId)?.name ?? 'Unknown company'
+  const crewName = (crewId?: string) => data.crews.find((crew) => crew.id === crewId)?.name ?? 'Unassigned'
   const linkedJob = selected?.jobId ? data.jobs.find((job) => job.id === selected.jobId) : null
 
-  return (
-    <section className="content-grid">
-      <div className="column-stack">
-        <div className="card">
-          <div className="section-head"><div><h3>Subcontract Work Orders</h3><span>Run incoming work from larger roofing companies</span></div><button className="primary" onClick={() => setShowForm((value) => !value)}>New work order</button></div>
-          <div className="filter-grid">
-            <label className="field"><span>Company</span><select value={accountFilter} onChange={(e) => setAccountFilter(e.target.value)}><option value="all">All companies</option>{accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}</select></label>
-            <label className="field"><span>Status</span><select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as WorkOrderStatus | 'all')}><option value="all">All statuses</option>{WORK_ORDER_STATUS_FLOW.map((status) => <option key={status}>{status}</option>)}<option>Callback Required</option><option>Disputed</option><option>Cancelled</option><option>On Hold</option></select></label>
-            <label className="field"><span>Search</span><input placeholder="WO, PO, scope, job type..." value={search} onChange={(e) => setSearch(e.target.value)} /></label>
-          </div>
-          {showForm && (
-            <div className="card inset-card">
-              <div className="section-head"><div><h4>Create work order</h4><span>Start with the incoming subcontract scope.</span></div></div>
-              <div className="form-grid">
-                <div className="split-grid"><label className="field"><span>Subcontractor</span><select value={form.accountId ?? ''} onChange={(e) => setForm({ ...form, accountId: e.target.value })}><option value="">Select company</option>{accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}</select></label><label className="field"><span>Work order #</span><input value={form.workOrderNumber ?? ''} onChange={(e) => setForm({ ...form, workOrderNumber: e.target.value })} placeholder="Auto-generated if blank" /></label></div>
-                <div className="split-grid"><label className="field"><span>PO number</span><input value={form.purchaseOrderNumber ?? ''} onChange={(e) => setForm({ ...form, purchaseOrderNumber: e.target.value })} /></label><label className="field"><span>Job type</span><input value={form.jobType ?? ''} onChange={(e) => setForm({ ...form, jobType: e.target.value })} /></label></div>
-                <div className="split-grid"><label className="field"><span>Requested start</span><input type="date" value={form.requestedStartDate ?? ''} onChange={(e) => setForm({ ...form, requestedStartDate: e.target.value })} /></label><label className="field"><span>Deadline</span><input type="date" value={form.deadline ?? ''} onChange={(e) => setForm({ ...form, deadline: e.target.value })} /></label></div>
-                <label className="field"><span>Scope of work</span><textarea rows={5} value={form.scopeOfWork ?? ''} onChange={(e) => setForm({ ...form, scopeOfWork: e.target.value })} placeholder="Paste or enter the exact subcontract scope..." /></label>
-                <div className="split-grid"><label className="field"><span>Materials</span><textarea rows={3} value={form.materials ?? ''} onChange={(e) => setForm({ ...form, materials: e.target.value })} /></label><label className="field"><span>Labour requirements</span><textarea rows={3} value={form.labourRequirements ?? ''} onChange={(e) => setForm({ ...form, labourRequirements: e.target.value })} /></label></div>
-                <div className="split-grid"><label className="field"><span>Crew requirements</span><textarea rows={3} value={form.crewRequirements ?? ''} onChange={(e) => setForm({ ...form, crewRequirements: e.target.value })} /></label><label className="field"><span>Special instructions</span><textarea rows={3} value={form.specialInstructions ?? ''} onChange={(e) => setForm({ ...form, specialInstructions: e.target.value })} /></label></div>
-                <div className="split-grid"><label className="field"><span>Estimated value</span><input type="number" value={form.estimatedValue ?? 0} onChange={(e) => setForm({ ...form, estimatedValue: Number(e.target.value) })} /></label><label className="field"><span>Agreed price</span><input type="number" value={form.agreedPrice ?? 0} onChange={(e) => setForm({ ...form, agreedPrice: Number(e.target.value) })} /></label></div>
-                <button className="primary" onClick={saveWorkOrder}>Create work order</button>
-              </div>
-            </div>
-          )}
-          <div className="list-stack">
-            {filtered.map((order) => <button key={order.id} className={`list-row ${selectedId === order.id ? 'selected' : ''}`} onClick={() => setSelectedId(order.id)}><div><strong>{order.workOrderNumber}</strong><span>{accountName(order.accountId)} · {order.jobType}</span></div><div><strong>{order.status}</strong><span>{order.requestedStartDate || 'No start date'}</span></div><div><strong>${order.agreedPrice.toLocaleString()}</strong><span>{order.purchaseOrderNumber ? `PO ${order.purchaseOrderNumber}` : 'No PO'}</span></div></button>)}
-            {!filtered.length && <div className="empty-state">No work orders match these filters.</div>}
-          </div>
-        </div>
-      </div>
-
-      <div className="column-stack">
-        {selected ? <>
-          <div className="card">
-            <div className="section-head"><div><h3>{selected.workOrderNumber}</h3><span>{accountName(selected.accountId)} · {selected.jobType}</span></div><span className="status-pill">{selected.status}</span></div>
-            <div className="status-flow">{WORK_ORDER_STATUS_FLOW.map((status, index) => <button key={status} disabled={!canAdvanceWorkOrderStatus(selected.status, status)} className={selected.status === status ? 'active' : ''} onClick={() => advanceStatus(status)}>{index + 1}. {status}</button>)}</div>
-            {selected.status !== 'Callback Required' && <button className="secondary" onClick={() => advanceStatus('Callback Required')}>Flag callback required</button>}
-            <div className="detail-stack">
-              <label className="field"><span>Scope of work</span><textarea rows={8} value={selected.scopeOfWork} onChange={(e) => updateOrder({ scopeOfWork: e.target.value })} /></label>
-              <div className="split-grid"><label className="field"><span>Materials</span><textarea rows={5} value={selected.materials} onChange={(e) => updateOrder({ materials: e.target.value })} /></label><label className="field"><span>Labour requirements</span><textarea rows={5} value={selected.labourRequirements} onChange={(e) => updateOrder({ labourRequirements: e.target.value })} /></label></div>
-              <div className="split-grid"><label className="field"><span>Crew requirements</span><textarea rows={4} value={selected.crewRequirements} onChange={(e) => updateOrder({ crewRequirements: e.target.value })} /></label><label className="field"><span>Special instructions</span><textarea rows={4} value={selected.specialInstructions} onChange={(e) => updateOrder({ specialInstructions: e.target.value })} /></label></div>
-              <div className="split-grid"><label className="field"><span>Agreed price</span><input type="number" value={selected.agreedPrice} onChange={(e) => updateOrder({ agreedPrice: Number(e.target.value) })} /></label><label className="field"><span>Deadline</span><input type="date" value={selected.deadline ?? ''} onChange={(e) => updateOrder({ deadline: e.target.value })} /></label></div>
-            </div>
-          </div>
-          <div className="card"><div className="section-head"><div><h3>Linked project</h3><span>Connect this subcontract order to existing production.</span></div></div>{linkedJob ? <div className="list-row"><div><strong>{linkedJob.title}</strong><span>{linkedJob.status}</span></div><button className="secondary" onClick={() => { selectJob(linkedJob.id); setView('jobs') }}>Open job</button></div> : <div className="empty-state">This work order is not linked to a CRM job yet. Select a current job above when creating the order, or link it during the next workflow pass.</div>}</div>
-        </> : <div className="card empty-state">Create or select a subcontract work order.</div>}
-      </div>
-    </section>
-  )
+  return <section className="content-grid">
+    <div className="column-stack"><div className="card">
+      <div className="section-head"><div><h3>Subcontract Work Orders</h3><span>Run incoming work from larger roofing companies</span></div><button className="primary" onClick={() => setShowForm((value) => !value)}>New work order</button></div>
+      <div className="filter-grid"><label className="field"><span>Company</span><select value={accountFilter} onChange={(e) => setAccountFilter(e.target.value)}><option value="all">All companies</option>{accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}</select></label><label className="field"><span>Status</span><select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as WorkOrderStatus | 'all')}><option value="all">All statuses</option>{[...WORK_ORDER_STATUS_FLOW, 'Callback Required', 'Disputed', 'Cancelled', 'On Hold'].map((status) => <option key={status}>{status}</option>)}</select></label><label className="field"><span>Search</span><input placeholder="WO, PO, scope, job type..." value={search} onChange={(e) => setSearch(e.target.value)} /></label></div>
+      {showForm && <div className="card inset-card"><div className="section-head"><div><h4>Create work order</h4><span>Capture the incoming scope, site, schedule, and crew requirements.</span></div></div><div className="form-grid">
+        <div className="split-grid"><label className="field"><span>Subcontractor</span><select value={form.accountId ?? ''} onChange={(e) => setForm({ ...form, accountId: e.target.value })}><option value="">Select company</option>{accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}</select></label><label className="field"><span>Work order #</span><input value={form.workOrderNumber ?? ''} onChange={(e) => setForm({ ...form, workOrderNumber: e.target.value })} placeholder="Auto-generated if blank" /></label></div>
+        <div className="split-grid"><label className="field"><span>PO number</span><input value={form.purchaseOrderNumber ?? ''} onChange={(e) => setForm({ ...form, purchaseOrderNumber: e.target.value })} /></label><label className="field"><span>Job type</span><input value={form.jobType ?? ''} onChange={(e) => setForm({ ...form, jobType: e.target.value })} /></label></div>
+        <div className="split-grid"><label className="field"><span>Requested start</span><input type="date" value={form.requestedStartDate ?? ''} onChange={(e) => setForm({ ...form, requestedStartDate: e.target.value })} /></label><label className="field"><span>Deadline</span><input type="date" value={form.deadline ?? ''} onChange={(e) => setForm({ ...form, deadline: e.target.value })} /></label></div>
+        <h4>Job site</h4><label className="field"><span>Address</span><input value={site.address ?? ''} onChange={(e) => setSite({ ...site, address: e.target.value })} placeholder="Site address" /></label><div className="split-grid"><label className="field"><span>Site contact</span><input value={site.siteContact ?? ''} onChange={(e) => setSite({ ...site, siteContact: e.target.value })} /></label><label className="field"><span>Site phone</span><input value={site.sitePhone ?? ''} onChange={(e) => setSite({ ...site, sitePhone: e.target.value })} /></label></div><div className="split-grid"><label className="field"><span>Access instructions</span><textarea rows={2} value={site.accessInstructions ?? ''} onChange={(e) => setSite({ ...site, accessInstructions: e.target.value })} /></label><label className="field"><span>Parking information</span><textarea rows={2} value={site.parkingInformation ?? ''} onChange={(e) => setSite({ ...site, parkingInformation: e.target.value })} /></label></div><div className="split-grid"><label className="field"><span>Safety hazards</span><textarea rows={2} value={site.safetyHazards ?? ''} onChange={(e) => setSite({ ...site, safetyHazards: e.target.value })} /></label><label className="field"><span>Required equipment</span><textarea rows={2} value={site.requiredEquipment ?? ''} onChange={(e) => setSite({ ...site, requiredEquipment: e.target.value })} /></label></div>
+        <h4>Scheduling & crew</h4><div className="split-grid"><label className="field"><span>Scheduled date</span><input type="date" value={form.scheduledDate ?? ''} onChange={(e) => setForm({ ...form, scheduledDate: e.target.value })} /></label><label className="field"><span>Crew</span><select value={form.crewId ?? ''} onChange={(e) => setForm({ ...form, crewId: e.target.value || undefined })}><option value="">Unassigned</option>{data.crews.filter((crew) => crew.status === 'Active').map((crew) => <option key={crew.id} value={crew.id}>{crew.name}{crew.crewLead ? ` — ${crew.crewLead}` : ''}</option>)}</select></label></div><div className="split-grid"><label className="field"><span>Start time</span><input type="time" value={form.scheduledStartTime ?? ''} onChange={(e) => setForm({ ...form, scheduledStartTime: e.target.value })} /></label><label className="field"><span>End time</span><input type="time" value={form.scheduledEndTime ?? ''} onChange={(e) => setForm({ ...form, scheduledEndTime: e.target.value })} /></label></div>
+        <label className="field"><span>Scope of work</span><textarea rows={5} value={form.scopeOfWork ?? ''} onChange={(e) => setForm({ ...form, scopeOfWork: e.target.value })} placeholder="Paste or enter the exact subcontract scope..." /></label><div className="split-grid"><label className="field"><span>Materials</span><textarea rows={3} value={form.materials ?? ''} onChange={(e) => setForm({ ...form, materials: e.target.value })} /></label><label className="field"><span>Labour requirements</span><textarea rows={3} value={form.labourRequirements ?? ''} onChange={(e) => setForm({ ...form, labourRequirements: e.target.value })} /></label></div><div className="split-grid"><label className="field"><span>Crew requirements</span><textarea rows={3} value={form.crewRequirements ?? ''} onChange={(e) => setForm({ ...form, crewRequirements: e.target.value })} /></label><label className="field"><span>Special instructions</span><textarea rows={3} value={form.specialInstructions ?? ''} onChange={(e) => setForm({ ...form, specialInstructions: e.target.value })} /></label></div><div className="split-grid"><label className="field"><span>Estimated value</span><input type="number" value={form.estimatedValue ?? 0} onChange={(e) => setForm({ ...form, estimatedValue: Number(e.target.value) })} /></label><label className="field"><span>Agreed price</span><input type="number" value={form.agreedPrice ?? 0} onChange={(e) => setForm({ ...form, agreedPrice: Number(e.target.value) })} /></label></div><button className="primary" onClick={saveWorkOrder}>Create work order</button>
+      </div></div>}
+      <div className="list-stack">{filtered.map((order) => <button key={order.id} className={`list-row ${selectedId === order.id ? 'selected' : ''}`} onClick={() => setSelectedId(order.id)}><div><strong>{order.workOrderNumber}</strong><span>{accountName(order.accountId)} · {order.jobType}</span></div><div><strong>{order.status}</strong><span>{order.scheduledDate || order.requestedStartDate || 'Not scheduled'}</span></div><div><strong>{crewName(order.crewId)}</strong><span>${order.agreedPrice.toLocaleString()}</span></div></button>)}{!filtered.length && <div className="empty-state">No work orders match these filters.</div>}</div>
+    </div></div>
+    <div className="column-stack">{selected ? <>
+      <div className="card"><div className="section-head"><div><h3>{selected.workOrderNumber}</h3><span>{accountName(selected.accountId)} · {selected.jobType}</span></div><span className="status-pill">{selected.status}</span></div><div className="status-flow">{WORK_ORDER_STATUS_FLOW.map((status, index) => <button key={status} disabled={!canAdvanceWorkOrderStatus(selected.status, status)} className={selected.status === status ? 'active' : ''} onClick={() => advanceStatus(status)}>{index + 1}. {status}</button>)}</div>{selected.status !== 'Callback Required' && <button className="secondary" onClick={() => updateOrder({ status: 'Callback Required', callbackRequired: true })}>Flag callback required</button>}
+        <div className="detail-stack"><h4>Job site</h4>{selectedSite ? <><label className="field"><span>Address</span><input value={selectedSite.address} onChange={(e) => updateSite({ address: e.target.value })} /></label><div className="split-grid"><label className="field"><span>Site contact</span><input value={selectedSite.siteContact} onChange={(e) => updateSite({ siteContact: e.target.value })} /></label><label className="field"><span>Site phone</span><input value={selectedSite.sitePhone} onChange={(e) => updateSite({ sitePhone: e.target.value })} /></label></div><div className="split-grid"><label className="field"><span>Access</span><textarea rows={3} value={selectedSite.accessInstructions} onChange={(e) => updateSite({ accessInstructions: e.target.value })} /></label><label className="field"><span>Parking</span><textarea rows={3} value={selectedSite.parkingInformation} onChange={(e) => updateSite({ parkingInformation: e.target.value })} /></label></div><div className="split-grid"><label className="field"><span>Safety hazards</span><textarea rows={3} value={selectedSite.safetyHazards} onChange={(e) => updateSite({ safetyHazards: e.target.value })} /></label><label className="field"><span>Required equipment</span><textarea rows={3} value={selectedSite.requiredEquipment} onChange={(e) => updateSite({ requiredEquipment: e.target.value })} /></label></div></> : <div className="empty-state">No job site has been created for this work order.</div>}
+        <h4>Schedule & crew</h4><div className="split-grid"><label className="field"><span>Scheduled date</span><input type="date" value={selected.scheduledDate ?? ''} onChange={(e) => updateOrder({ scheduledDate: e.target.value, status: e.target.value ? (selected.crewId ? 'Assigned' : 'Scheduled') : selected.status })} /></label><label className="field"><span>Assigned crew</span><select value={selected.crewId ?? ''} onChange={(e) => { const crewId = e.target.value || undefined; updateOrder({ crewId, status: selected.scheduledDate ? (crewId ? 'Assigned' : 'Scheduled') : selected.status }) }}><option value="">Unassigned</option>{data.crews.filter((crew) => crew.status === 'Active').map((crew) => <option key={crew.id} value={crew.id}>{crew.name}{crew.crewLead ? ` — ${crew.crewLead}` : ''}</option>)}</select></label></div><div className="split-grid"><label className="field"><span>Start time</span><input type="time" value={selected.scheduledStartTime ?? ''} onChange={(e) => updateOrder({ scheduledStartTime: e.target.value })} /></label><label className="field"><span>End time</span><input type="time" value={selected.scheduledEndTime ?? ''} onChange={(e) => updateOrder({ scheduledEndTime: e.target.value })} /></label></div><div className="list-row"><div><strong>{selected.scheduledDate || 'Not scheduled'}</strong><span>{selected.scheduledStartTime || '--:--'} to {selected.scheduledEndTime || '--:--'} · {crewName(selected.crewId)}</span></div></div>
+        <h4>Scope & production instructions</h4><label className="field"><span>Scope of work</span><textarea rows={8} value={selected.scopeOfWork} onChange={(e) => updateOrder({ scopeOfWork: e.target.value })} /></label><div className="split-grid"><label className="field"><span>Materials</span><textarea rows={5} value={selected.materials} onChange={(e) => updateOrder({ materials: e.target.value })} /></label><label className="field"><span>Labour requirements</span><textarea rows={5} value={selected.labourRequirements} onChange={(e) => updateOrder({ labourRequirements: e.target.value })} /></label></div><div className="split-grid"><label className="field"><span>Crew requirements</span><textarea rows={4} value={selected.crewRequirements} onChange={(e) => updateOrder({ crewRequirements: e.target.value })} /></label><label className="field"><span>Special instructions</span><textarea rows={4} value={selected.specialInstructions} onChange={(e) => updateOrder({ specialInstructions: e.target.value })} /></label></div><div className="split-grid"><label className="field"><span>Agreed price</span><input type="number" value={selected.agreedPrice} onChange={(e) => updateOrder({ agreedPrice: Number(e.target.value) })} /></label><label className="field"><span>Deadline</span><input type="date" value={selected.deadline ?? ''} onChange={(e) => updateOrder({ deadline: e.target.value })} /></label></div>
+      </div></div>
+      <div className="card"><div className="section-head"><div><h3>Linked project</h3><span>Connect this subcontract order to existing production.</span></div></div>{linkedJob ? <div className="list-row"><div><strong>{linkedJob.title}</strong><span>{linkedJob.status}</span></div><button className="secondary" onClick={() => { selectJob(linkedJob.id); setView('jobs') }}>Open job</button></div> : <div className="empty-state">This work order is not linked to a CRM job yet.</div>}</div>
+    </> : <div className="card empty-state">Create or select a subcontract work order.</div>}</div>
+  </section>
 }
