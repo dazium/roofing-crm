@@ -62,7 +62,7 @@
   },
   "build": {
     "appId": "com.daziu.roofingcrm.desktop",
-    "productName": "RoofingCRM",
+    "productName": "Munro & Sons Roofing Experts",
     "artifactName": "${productName} Setup ${version}.${ext}",
     "directories": {
       "output": "release"
@@ -89,7 +89,7 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "shortcutName": "RoofingCRM",
+      "shortcutName": "Munro & Sons Roofing Experts",
       "deleteAppDataOnUninstall": false,
       "displayLanguageSelector": false,
       "warningsAsErrors": false,
