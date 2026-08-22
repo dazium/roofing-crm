@@ -910,7 +910,8 @@ button:disabled {
 }
 
 .content-grid.two-col {
-  grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
 }
 
 .span-2 {
@@ -2212,10 +2213,10 @@ button.ghost.danger {
 
 .roofing-dashboard-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 30%);
-    gap: 18px;
-    align-items: start;
-  }
+  grid-template-columns: minmax(0, 1fr) minmax(0, 30%);
+  gap: 18px;
+  align-items: start;
+}
 
   .roofing-board-panel {
     position: relative;
@@ -3607,4 +3608,5 @@ body {
     min-height: auto;
   }
 }
+
 
