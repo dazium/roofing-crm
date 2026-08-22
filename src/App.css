@@ -1,203 +1,43 @@
-:root {
-  --bg: #07101e;
-  --bg-2: #0b1728;
-  --panel: rgba(11, 20, 38, 0.94);
-  --panel-2: rgba(18, 30, 52, 0.96);
-  --card: rgba(10, 18, 36, 0.92);
-  --line: rgba(148, 163, 184, 0.18);
-  --text: #f8fafc;
-  --muted: #94a3b8;
-  --accent: #f59e0b;
-  --accent-2: #fbbf24;
-  --success: #10b981;
-  --danger: #f43f5e;
-  --info: #64748b;
-  --slate-blue: #475569;
-  --kanban-border: rgba(255, 255, 255, 0.08);
-}
+@layer components {
+  .blueprint-card {
+    @apply bg-card text-card-foreground rounded-lg border border-border p-6 shadow-sm;
+    position: relative;
+    overflow: hidden;
+  }
 
-/* High-contrast operational surfaces. These overrides normalize older light selectors. */
-body,
-.page-shell,
-.main-content,
-.workspace {
-  background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.06) 0%, transparent 30%),
-    radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.03) 0%, transparent 28%),
-    linear-gradient(180deg, #07101e 0%, #091823 100%);
-  color: var(--text);
-}
+  .blueprint-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, color-mix(in oklch, var(--primary) 35%, transparent), transparent);
+  }
 
-.card,
-.pipeline-card,
-.context-card,
-.stat-card,
-.job-card,
-.kanban-card,
-.crew-job-card,
-.workspace-focus-card,
-.time-tracking-panel,
-.timesheet-card,
-.change-order-grid > .card,
-.production-checklist,
-.production-summary,
-.approval-summary {
-  background: var(--card);
-  border-color: var(--kanban-border);
-  color: var(--text);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.24);
-}
+  .blueprint-section {
+    @apply bg-card text-card-foreground rounded-lg border border-border overflow-hidden shadow-sm;
+  }
 
-input,
-select,
-textarea,
-.pipeline-card,
-.job-select {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text);
-  border-color: rgba(255, 255, 255, 0.08);
-}
+  .blueprint-header {
+    @apply bg-muted/60 text-card-foreground px-6 py-4 border-b border-border;
+    position: relative;
+  }
 
-input::placeholder,
-textarea::placeholder {
-  color: #94a3b8;
-}
+  .blueprint-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, color-mix(in oklch, var(--primary) 28%, transparent), transparent);
+  }
 
-select option {
-  background: var(--panel-2);
-  color: var(--text);
+  .blueprint-grid {
+    @apply grid gap-6;
+  }
 }
-
-.nav-item.active,
-.main-nav-button.active,
-.job-card.active .job-main,
-.crew-job-card.active,
-.pipeline-card.active {
-  background: rgba(245, 158, 11, 0.14);
-  border-color: rgba(245, 158, 11, 0.45);
-  color: #fff7ed;
-}
-
-.nav-item strong,
-.nav-label-with-icon,
-.section-heading h1,
-.section-heading h2,
-.card h3,
-.card h4,
-.card strong,
-.pipeline-card strong,
-.job-card strong,
-.stat-card strong,
-.timesheet-row strong,
-.change-order-item strong,
-.material-order-item strong {
-  color: #f8fafc;
-}
-
-.card p,
-.card span,
-.card small,
-.section-heading p,
-.pipeline-card span,
-.pipeline-card small,
-.job-card span,
-.job-card small {
-  color: #b7c2d1;
-}
-
-button.ghost,
-.ghost {
-  background: #273449;
-  color: #e5edf7;
-  border: 1px solid #3a4a60;
-}
-
-button.ghost:hover,
-.ghost:hover {
-  background: #33445c;
-  color: #ffffff;
-}
-
-.status-pill,
-.active-badge {
-  color: #fef3c7;
-  background: rgba(245, 158, 11, 0.18);
-  border-color: rgba(245, 158, 11, 0.35);
-}
-
-* {
-  box-sizing: border-box;
-}
-
-/* Keep grid/flex children from forcing overflow in narrow columns. */
-*,
-*::before,
-*::after {
-  min-width: 0;
-}
-
-body {
-  margin: 0;
-  background:
-    linear-gradient(180deg, #0f172a 0%, #111827 100%);
-  color: var(--text);
-  font-family: Inter, 'Aptos', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  min-height: 100%;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-}
-
-html,
-body,
-#root {
-  max-width: 100%;
-  overflow-x: hidden;
-  min-height: 100%;
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
-
-button,
-input,
-select,
-textarea {
-  border-radius: 8px;
-}
-
-input,
-select,
-textarea {
-  width: 100%;
-  max-width: 100%;
-  padding: 0.8rem 0.92rem;
-  border: 1px solid var(--line);
-  background: #ffffff;
-  color: var(--text);
-  outline: none;
-}
-
-select {
-  appearance: none;
-  background-image:
-    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
-    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
-  background-position:
-    calc(100% - 22px) calc(50% - 2px),
-    calc(100% - 16px) calc(50% - 2px);
-  background-size: 6px 6px, 6px 6px;
-  background-repeat: no-repeat;
-  padding-right: 2.5rem;
-}
-
-select option {
-  color: var(--text);
-  background: #ffffff;
-}
-
-input::placeholder,
 textarea::placeholder {
   color: #98a2b3;
 }
@@ -3738,8 +3578,6 @@ body {
   }
 }
 
-<<<<<<< Updated upstream
-=======
 /* ==========================================
    MOBILE & TABLET RESPONSIVE OVERHAUL (ANDROID)
    ========================================== */
@@ -4238,6 +4076,4 @@ button:active,
     opacity: 1;
   }
 }
-
->>>>>>> Stashed changes
 
