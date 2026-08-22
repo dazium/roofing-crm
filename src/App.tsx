@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BarChart3, CalendarDays, Camera, FileText, HardHat, Home, KanbanSquare, MapPin, Package, Settings as SettingsIcon, Truck, Users, Clock3, ClipboardPlus, ClipboardCheck, PackageCheck, FileSignature, ChartNoAxesCombined } from 'lucide-react';
+import { BarChart3, CalendarDays, Camera, FileText, HardHat, Home, KanbanSquare, MapPin, Package, Settings as SettingsIcon, Truck, Users, Clock3, ClipboardPlus, ClipboardCheck, PackageCheck, FileSignature, ChartNoAxesCombined, Menu, X, Search, Plus, ClipboardList } from 'lucide-react';
 import './App.css';
 import { Dashboard } from './sections/Dashboard';
 import { Customers } from './sections/Customers';
@@ -149,6 +149,8 @@ export default function App() {
   const [storageMeta, setStorageMeta] = useState<StorageMeta>({});
   const [storageMessage, setStorageMessage] = useState('Loading saved data...');
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [drawerSearch, setDrawerSearch] = useState('');
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
@@ -602,7 +604,80 @@ export default function App() {
           </div>
         ))}
       </aside>
+      {/* Mobile Navigation Drawer */}
+      {isMobileMenuOpen && (
+        <div className="mobile-drawer-backdrop" onClick={() => setIsMobileMenuOpen(false)}>
+          <aside className="mobile-drawer" onClick={(e) => e.stopPropagation()}>
+            <div className="mobile-drawer-header">
+              <div className="brand-block">
+                <div className="brand-mark"><Package size={22} /></div>
+                <div>
+                  <h1>Roofing CRM</h1>
+                  <p>Shingle jobs, crews & field ops</p>
+                </div>
+              </div>
+              <button className="icon-btn ghost drawer-close-btn" onClick={() => setIsMobileMenuOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="mobile-drawer-search">
+              <Search size={16} className="search-icon" />
+              <input
+                type="text"
+                placeholder="Search CRM sections..."
+                value={drawerSearch}
+                onChange={(e) => setDrawerSearch(e.target.value)}
+              />
+            </div>
+            <div className="mobile-drawer-content">
+              {visibleNavGroups.map((group) => {
+                const filteredItems = group.items.filter((item) =>
+                  item.label.toLowerCase().includes(drawerSearch.toLowerCase())
+                );
+                if (filteredItems.length === 0) return null;
+                return (
+                  <div className="mobile-drawer-group" key={`drawer-${group.label}`}>
+                    <span className="sidebar-label">{group.label}</span>
+                    {filteredItems.map((item) => (
+                      <button
+                        key={`drawer-${item.key}`}
+                        className={`nav-item nav-button ${item.child ? 'nav-child' : ''} ${view === item.key ? 'active' : ''}`}
+                        onClick={() => {
+                          setView(item.key);
+                          setIsMobileMenuOpen(false);
+                        }}
+                      >
+                        <span className="nav-label-with-icon">{item.icon}{item.label}</span>
+                        {typeof item.count === 'number' ? <strong>{item.count}</strong> : <strong>•</strong>}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </aside>
+        </div>
+      )}
+
       <main className="main-pane">
+        {/* Mobile Header Bar */}
+        <header className="mobile-top-bar">
+          <button className="mobile-menu-trigger" onClick={() => setIsMobileMenuOpen(true)}>
+            <Menu size={22} />
+          </button>
+          <div className="mobile-top-title">
+            <span className="mobile-brand-name">Roofing CRM</span>
+            <span className="mobile-view-title">{activeView?.label}</span>
+          </div>
+          <button
+            className="mobile-top-action"
+            onClick={() => setView(view === 'crew-mode' ? 'dashboard' : 'crew-mode')}
+            title="Toggle Crew Mode"
+          >
+            <HardHat size={18} />
+          </button>
+        </header>
+
         <div className="page-header-shell">
           <div className="page-header">
             <div>
@@ -627,25 +702,6 @@ export default function App() {
                 <strong>{storageMode === 'sqlite-native' ? 'SQLite' : 'Browser'}</strong>
               </div>
             </div>
-          </div>
-          <div className="main-nav mobile-nav">
-            {visibleNavGroups.map((group) => (
-              <div className="mobile-nav-group" key={`mobile-${group.label}`}>
-                <span className="mobile-nav-label">{group.label}</span>
-                <div className="mobile-nav-items">
-                  {group.items.map((item) => (
-                    <button
-                      key={`mobile-${item.key}`}
-                      className={`main-nav-button ${item.child ? 'nav-child' : ''} ${view === item.key ? 'active' : ''}`}
-                      onClick={() => setView(item.key)}
-                    >
-                      <span className="nav-label-with-icon">{item.icon}{item.label}</span>
-                      {typeof item.count === 'number' ? <strong>{item.count}</strong> : <strong>•</strong>}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
           </div>
         </div>
         <div className="page-content">
@@ -907,6 +963,65 @@ export default function App() {
           )}
         </div>
       </main>
+
+      {/* Mobile Sticky Floating Action Buttons */}
+      <div className="mobile-fab-container">
+        <button
+          className="mobile-fab primary"
+          onClick={() => setView('inspect')}
+          title="Start Roof Inspection"
+        >
+          <Plus size={18} />
+          <span>Inspect</span>
+        </button>
+        <button
+          className="mobile-fab secondary"
+          onClick={() => setView('photos')}
+          title="Upload Field Photo"
+        >
+          <Camera size={18} />
+          <span>Photo</span>
+        </button>
+      </div>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="mobile-bottom-bar">
+        <button
+          className={`mobile-tab ${view === 'dashboard' ? 'active' : ''}`}
+          onClick={() => setView('dashboard')}
+        >
+          <Home size={20} />
+          <span>Home</span>
+        </button>
+        <button
+          className={`mobile-tab ${view === 'inspect' ? 'active' : ''}`}
+          onClick={() => setView('inspect')}
+        >
+          <ClipboardList size={20} />
+          <span>Inspect</span>
+        </button>
+        <button
+          className={`mobile-tab ${view === 'jobs' ? 'active' : ''}`}
+          onClick={() => setView('jobs')}
+        >
+          <KanbanSquare size={20} />
+          <span>Projects</span>
+        </button>
+        <button
+          className={`mobile-tab ${view === 'crew-mode' ? 'active' : ''}`}
+          onClick={() => setView('crew-mode')}
+        >
+          <HardHat size={20} />
+          <span>Crew</span>
+        </button>
+        <button
+          className="mobile-tab"
+          onClick={() => setIsMobileMenuOpen(true)}
+        >
+          <Menu size={20} />
+          <span>Menu</span>
+        </button>
+      </nav>
     </div>
   );
 }

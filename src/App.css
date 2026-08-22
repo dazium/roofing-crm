@@ -141,6 +141,8 @@ body {
     linear-gradient(180deg, #0f172a 0%, #111827 100%);
   color: var(--text);
   font-family: Inter, 'Aptos', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  min-height: 100%;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 html,
@@ -148,6 +150,7 @@ body,
 #root {
   max-width: 100%;
   overflow-x: hidden;
+  min-height: 100%;
 }
 
 button,
@@ -230,11 +233,11 @@ button:disabled {
 }
 
 #root {
-  min-height: 100vh;
+  min-height: 100%;
 }
 
 .page-shell {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
   max-width: 100%;
@@ -247,7 +250,7 @@ button:disabled {
   background: rgba(8, 16, 30, 0.96);
   position: sticky;
   top: 0;
-  height: 100vh;
+  height: 100dvh;
   overflow-y: auto;
 }
 
@@ -2608,6 +2611,10 @@ button.ghost.danger {
     grid-template-columns: 1fr;
   }
 
+  .dashboard-customer-form {
+    grid-template-columns: 1fr;
+  }
+
   .jobs-layout > .span-2 {
     grid-column: 1;
   }
@@ -2686,7 +2693,12 @@ button.ghost.danger {
 
 @media (max-width: 768px) {
   .main-pane {
-    padding: 16px;
+    padding: calc(60px + env(safe-area-inset-top, 0px)) 12px calc(160px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .page-content {
+    padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+    scroll-padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px));
   }
 
   .page-header h2,
@@ -2716,6 +2728,10 @@ button.ghost.danger {
 
   .mobile-nav-items {
     overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    padding-bottom: 6px;
   }
 
   .main-nav-button {
@@ -2774,6 +2790,44 @@ button.ghost.danger {
 
   .material-price-meta {
     flex-direction: column;
+  }
+
+  .dashboard-customer-form {
+    grid-template-columns: 1fr;
+  }
+
+  .calculator-row {
+    grid-template-columns: 1fr;
+  }
+
+  .measure-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .plane-form {
+    grid-template-columns: 1fr;
+  }
+
+  .mini-stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  }
+
+  .roof-math-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .crew-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .route-planner-controls,
+  .route-summary-strip,
+  .invoice-export-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .roofing-metric-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .job-board-row {
@@ -2882,6 +2936,63 @@ button.ghost.danger {
 .time-actions {
   display: flex;
   gap: 1rem;
+}
+
+.timesheet-heading-actions,
+.timesheet-form-actions,
+.timesheet-entry-mode {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.timesheet-heading-actions {
+  justify-content: flex-end;
+}
+
+.timesheet-heading-actions button,
+.timesheet-entry-mode button,
+.empty-state button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timesheet-entry-mode {
+  margin-bottom: 12px;
+}
+
+.timesheet-clock-card {
+  display: grid;
+  gap: 12px;
+}
+
+.timesheet-clock-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.timesheet-crew-summary {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.timesheet-crew-summary span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.timesheet-form-actions {
+  margin-top: 12px;
 }
 
 .punch-button {
@@ -3012,6 +3123,24 @@ button.ghost.danger {
   .punch-button {
     padding: 1rem;
     font-size: 1rem;
+  }
+
+  .timesheet-heading-actions,
+  .timesheet-form-actions,
+  .timesheet-entry-mode,
+  .timesheet-clock-grid,
+  .time-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .timesheet-heading-actions button,
+  .timesheet-form-actions button,
+  .timesheet-entry-mode button,
+  .time-actions button {
+    width: 100%;
+    justify-content: center;
   }
 }
 
@@ -3609,4 +3738,506 @@ body {
   }
 }
 
+<<<<<<< Updated upstream
+=======
+/* ==========================================
+   MOBILE & TABLET RESPONSIVE OVERHAUL (ANDROID)
+   ========================================== */
+
+/* Safe Area Inset Variables */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+/* Hide Mobile Top Bar & Bottom Bar by default on Desktop */
+.mobile-top-bar,
+.mobile-bottom-bar,
+.mobile-fab-container,
+.mobile-drawer-backdrop {
+  display: none;
+}
+
+/* Touch Input and Active Feedback Normalization */
+button,
+input,
+select,
+textarea,
+.nav-item,
+.mobile-tab,
+.mobile-fab {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button:active,
+.mobile-tab:active,
+.mobile-fab:active,
+.nav-item:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
+/* ------------------------------------------
+   RESPONSIVE LAYOUT BREAKPOINT (<= 900px)
+   ------------------------------------------ */
+@media (max-width: 900px) {
+  /* Prevent auto-zoom on mobile inputs */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Page Shell 1-Column Layout */
+  .page-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    padding: 0;
+  }
+
+  /* Hide Desktop Sidebar on Mobile */
+  .sidebar {
+    display: none !important;
+  }
+
+  /* Main Pane Padding & Spacing */
+  /* Top padding accounts for fixed mobile-top-bar (56px) + safe area */
+  /* Bottom padding accounts for fixed mobile-bottom-bar (64px) + FAB (48px) + safe area + buffer */
+  .main-pane {
+    padding: calc(56px + var(--safe-top) + 12px) 14px calc(64px + 56px + var(--safe-bottom) + 16px) !important;
+    width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  /* page-content should NOT add extra bottom padding on top of main-pane */
+  .page-content {
+    padding-bottom: 0 !important;
+    scroll-padding-bottom: 0;
+  }
+
+  /* Sticky page-header-shell must sit below the fixed mobile-top-bar */
+  .page-header-shell {
+    position: sticky;
+    top: calc(56px + var(--safe-top));
+    z-index: 50;
+    margin: 0 -14px 16px;
+    padding: 12px 14px;
+    background: rgba(7, 16, 30, 0.96) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* Full-width Touch Action Bars at bottom of sections */
+  .primary-actions,
+  .hero-actions,
+  .settings-actions,
+  .photo-actions,
+  .compact-actions,
+  .route-mode-actions,
+  .task-filter-actions {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 10px !important;
+    margin-top: 14px !important;
+    margin-bottom: 24px !important;
+  }
+
+  .primary-actions button,
+  .hero-actions button,
+  .settings-actions button,
+  .photo-actions button,
+  .compact-actions button,
+  .route-mode-actions button,
+  .task-filter-actions button {
+    width: 100% !important;
+    min-height: 48px !important;
+    font-size: 15px !important;
+    justify-content: center !important;
+    display: inline-flex !important;
+    align-items: center !important;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .header-summary {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    justify-content: flex-start;
+  }
+
+  /* Context Strip Stack */
+  .context-strip {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+
+  /* Mobile Top Navigation Header */
+  .mobile-top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: calc(56px + var(--safe-top));
+    padding-top: var(--safe-top);
+    padding-left: max(14px, var(--safe-left));
+    padding-right: max(14px, var(--safe-right));
+    background: rgba(7, 16, 30, 0.94);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 100;
+  }
+
+  .mobile-menu-trigger,
+  .mobile-top-action {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #f8fafc;
+    padding: 0;
+  }
+
+  .mobile-top-title {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .mobile-brand-name {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+  }
+
+  .mobile-view-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: #ffffff;
+  }
+
+  /* Mobile Bottom Navigation Bar */
+  .mobile-bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: calc(64px + var(--safe-bottom));
+    padding-bottom: var(--safe-bottom);
+    padding-left: var(--safe-left);
+    padding-right: var(--safe-right);
+    background: rgba(10, 18, 36, 0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.4);
+    z-index: 100;
+  }
+
+  .mobile-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    height: 100%;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 0;
+  }
+
+  .mobile-tab.active {
+    color: var(--accent);
+  }
+
+  .mobile-tab.active svg {
+    color: var(--accent);
+    filter: drop-shadow(0 2px 8px rgba(245, 158, 11, 0.4));
+  }
+
+  /* Sticky Floating Action Buttons (FAB) */
+  .mobile-fab-container {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    position: fixed;
+    bottom: calc(72px + var(--safe-bottom));
+    right: max(12px, var(--safe-right));
+    z-index: 99;
+  }
+
+  .mobile-fab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .mobile-fab.primary {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #ffffff;
+  }
+
+  .mobile-fab.secondary {
+    background: rgba(18, 30, 52, 0.95);
+    backdrop-filter: blur(12px);
+    color: #f8fafc;
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  /* Slide-over Mobile Navigation Drawer */
+  .mobile-drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(4px);
+    z-index: 10000 !important;
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .mobile-drawer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 86%;
+    max-width: 320px;
+    background: #091526;
+    border-right: 1px solid rgba(255, 255, 255, 0.12);
+    display: flex;
+    flex-direction: column;
+    padding: max(16px, var(--safe-top)) 14px calc(20px + var(--safe-bottom));
+    box-shadow: 20px 0 50px rgba(0, 0, 0, 0.6);
+    animation: slideInLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .mobile-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .mobile-drawer-header .brand-block {
+    margin: 0;
+  }
+
+  .drawer-close-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+  }
+
+  .mobile-drawer-search {
+    position: relative;
+    margin-bottom: 16px;
+  }
+
+  .mobile-drawer-search .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+  }
+
+  .mobile-drawer-search input {
+    padding-left: 36px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+  }
+
+  .mobile-drawer-content {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-right: 4px;
+  }
+
+  .mobile-drawer-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .mobile-drawer .nav-item {
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: 10px;
+  }
+
+  /* Responsive Grid Optimizations for Sections */
+  /* Force all multi-column grids to single column on mobile to prevent card overlap */
+  .stats-grid,
+  .dashboard-grid,
+  .quick-actions-grid,
+  .cards-grid,
+  .workflow-strip,
+  .content-grid,
+  .hero-grid,
+  .dashboard-command-grid,
+  .jobs-layout,
+  .split-grid,
+  .selection-grid,
+  .check-grid,
+  .measure-grid,
+  .workspace-meta-grid,
+  .crew-member-form,
+  .kanban-grid,
+  .mini-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Allow form-grid to use 1 column but keep full-span items */
+  .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .form-grid > .field,
+  .form-grid > .split-grid,
+  .form-grid > .section-block,
+  .form-grid > .mini-stats-grid,
+  .form-grid > .hero-actions,
+  .form-grid > .primary-actions,
+  .form-grid > .workflow-callout,
+  .form-grid > .status-note,
+  .form-grid > .proposal-table,
+  .form-grid > button,
+  .form-grid > .empty {
+    grid-column: 1 / -1;
+  }
+
+  /* jobs-layout: remove the fixed left panel column */
+  .jobs-layout > .span-2 {
+    grid-column: 1 / -1;
+  }
+
+  /* content-grid span-2 items should still span full width */
+  .content-grid > .span-2 {
+    grid-column: 1 / -1;
+  }
+
+  /* Kanban scrollable columns */
+  .kanban-column {
+    min-height: auto;
+  }
+
+  /* Photo grid: 2 columns on mobile is fine */
+  .photo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .photo-gallery-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  /* Job card: remove side-by-side layout */
+  .job-card {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Job board row: stack on mobile */
+  .job-board-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Job board meta: left-align on mobile */
+  .job-board-meta {
+    justify-items: start;
+    text-align: left;
+  }
+
+  /* Responsive Tables & Cards Margin Bottom Clearance */
+  .table-responsive,
+  .card,
+  .section-block {
+    margin-bottom: 16px;
+  }
+
+  /* Ensure card overflow is hidden so children don't bleed out */
+  .card {
+    overflow: hidden;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Stat card font adjustment */
+  .stat-card strong {
+    font-size: 22px;
+  }
+
+  /* Pipeline grid: 2 cols on mobile */
+  .pipeline-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  /* Proposal table: horizontal scroll only, no column collapse */
+  .proposal-table {
+    overflow-x: auto;
+  }
+}
+
+/* Animations */
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+>>>>>>> Stashed changes
 

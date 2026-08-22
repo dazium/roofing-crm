@@ -6,6 +6,12 @@ const { execFile } = require('node:child_process')
 const { promisify } = require('node:util')
 const { DatabaseSync } = require('node:sqlite')
 
+app.disableHardwareAcceleration()
+app.commandLine.appendSwitch('disable-gpu')
+app.commandLine.appendSwitch('disable-gpu-compositing')
+app.commandLine.appendSwitch('in-process-gpu')
+app.commandLine.appendSwitch('no-sandbox')
+
 const isDev = Boolean(process.env.VITE_DEV_SERVER_URL)
 const legacyDataFile = () => path.join(app.getPath('userData'), 'roofingcrm-data.json')
 const sqliteFile = () => path.join(app.getPath('userData'), 'roofingcrm.sqlite')
