@@ -158,7 +158,8 @@ button:disabled {
 
 .nav-item.active {
   background: #eef4ff;
-  border-color: #b2ccff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
 }
 
 .nav-item strong {
