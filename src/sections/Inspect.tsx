@@ -1,6 +1,8 @@
 import type { AppData, DamageType, PhotoCategory, Urgency } from '../types';
 import { badgeTone, formatBytes, openAddressInMaps, openEmailClient, openPhoneDialer, ROOF_TEMPLATES, roofComplexityLabel } from '../lib';
 import { RoofMathPanel } from '../components/RoofMathPanel';
+import { RoofMeasurementTool } from '../components/RoofMeasurementTool';
+import { RoofSpecifications } from '../components/RoofSpecifications';
 
 interface InspectionForm {
   roofType: string;
@@ -316,6 +318,34 @@ export const Inspect: React.FC<InspectProps> = ({
                 <div className="status-note">
                   Length x width fills the <strong>Base plan squares</strong> field automatically. The roof math panel then applies pitch and waste to produce roofing quantities.
                 </div>
+
+                <RoofMeasurementTool
+                  initialPitch={inspectionForm.pitch || '6/12'}
+                  onApplySquares={(totalSquares, details) => {
+                    setInspectionForm((prev) => ({
+                      ...prev,
+                      squares: totalSquares,
+                      pitch: details.pitch || prev.pitch,
+                      calculatorLength: details.length || prev.calculatorLength,
+                      calculatorWidth: details.width || prev.calculatorWidth,
+                    }));
+                  }}
+                />
+
+                <RoofSpecifications
+                  defaultArea={inspectionForm.squares ? inspectionForm.squares * 100 : 2400}
+                  defaultPitch={inspectionForm.pitch || '6/12'}
+                  onApplyEstimates={(calc, specs) => {
+                    setInspectionForm((prev) => ({
+                      ...prev,
+                      squares: calc.estimatedSquares,
+                      pitch: specs.roofPitch,
+                      wasteFactor: specs.wastePercentage,
+                      ridgeLength: calc.estimatedRidgeCaps,
+                      valleyLength: specs.numberOfValleys * 20,
+                    }));
+                  }}
+                />
                 <div className="measure-grid">
                   <label className="field field-short">
                     <span>Base plan squares</span>

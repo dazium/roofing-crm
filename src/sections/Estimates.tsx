@@ -3,6 +3,7 @@ import type { AppData, Estimate, EstimateLineItem, Inspection } from '../types';
 import { buildEstimateLineItemsFromDamages, buildEstimateLineItemsFromPlan, buildEstimatePdfHtml, companyDisplayName, companyTagline, hasDesktopPdfBridge, money, openAddressInMaps, openEmailClient, openPhoneDialer, uid } from '../lib';
 import { snapshotEstimateVersion } from '../appDataActions';
 import { RoofMathPanel } from '../components/RoofMathPanel';
+import { MaterialsChecklist, type SelectedMaterial } from '../components/MaterialsChecklist';
 
 interface EstimatesProps {
   data: AppData;
@@ -451,6 +452,29 @@ export const Estimates: React.FC<EstimatesProps> = ({
                   </label>
                 </div>
               </div>}
+
+              <div className="section-block">
+                <MaterialsChecklist
+                  materialPrices={data.materialPrices}
+                  onMaterialsChange={(selectedList: SelectedMaterial[]) => {
+                    const newItems = selectedList.map((m) => ({
+                      id: `est-mat-${m.id}`,
+                      title: m.name,
+                      quantity: m.quantity,
+                      unit: m.unit,
+                      unitPrice: m.unitPrice ?? 0,
+                      total: m.quantity * (m.unitPrice ?? 0),
+                    }));
+                    setEstimateForm((prev) => ({
+                      ...prev,
+                      lineItems: [
+                        ...prev.lineItems.filter((i) => !i.id.startsWith('est-mat-')),
+                        ...newItems,
+                      ],
+                    }));
+                  }}
+                />
+              </div>
 
               <div className="section-block">
                 <div className="section-subhead">

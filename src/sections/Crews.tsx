@@ -138,7 +138,7 @@ export const Crews: React.FC<CrewsProps> = ({ data, setData }) => {
       members: crew.members ?? [],
       phone: crew.phone ?? '',
       email: crew.email ?? '',
-      status: crew.status,
+      status: crew.status ?? 'Active',
       notes: crew.notes ?? '',
     });
   }
@@ -255,7 +255,7 @@ export const Crews: React.FC<CrewsProps> = ({ data, setData }) => {
               <div key={crew.id} className="stack-item inspection-card">
                 <div className="stack-item-top">
                   <strong>{crew.name}</strong>
-                  <span className={`pill pill-${badgeTone(crew.status)}`}>{crew.status}</span>
+                  <span className={`pill pill-${badgeTone(crew.status ?? 'Active')}`}>{crew.status ?? 'Active'}</span>
                 </div>
                 <p>{crew.crewLead ? `Lead: ${crew.crewLead}` : 'No crew lead assigned yet'}</p>
                 <small>{crew.notes || 'No crew notes yet.'}</small>
