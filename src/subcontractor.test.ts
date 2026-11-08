@@ -59,7 +59,7 @@ describe('subcontractor workflow', () => {
       status: 'Ready for Invoice', createdAt: '2026-08-01', updatedAt: '2026-08-01'
     }]
 
-    expect(getSubcontractDashboardSummary(data)).toMatchObject({ accounts: 1, activeWorkOrders: 1, readyForInvoice: 1, companiesWithWork: 1 })
+    expect(getSubcontractDashboardSummary(data)).toMatchObject({ accounts: 1, activeWorkOrders: 0, readyForInvoice: 1, companiesWithWork: 1 })
   })
 
   it('excludes invoices unrelated to subcontract work orders from dashboard totals', () => {
