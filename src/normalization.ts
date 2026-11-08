@@ -44,6 +44,11 @@ export function normalizeAppData(partial?: Partial<AppData> | null): AppData {
     damages: partial?.damages ?? seedData.damages,
     estimateVersions: partial?.estimateVersions ?? seedData.estimateVersions ?? [],
     timeLogs: partial?.timeLogs ?? seedData.timeLogs,
+    subcontractAccounts: partial?.subcontractAccounts ?? [],
+    subcontractContacts: partial?.subcontractContacts ?? [],
+    jobSites: partial?.jobSites ?? [],
+    workOrders: partial?.workOrders ?? [],
+    subcontractDocuments: partial?.subcontractDocuments ?? [],
   }
 
   const hasCustomerOne = normalized.customers.some((customer) => customer.id === 'cust-1')
@@ -82,6 +87,11 @@ const REQUIRED_COLLECTIONS: Array<{ key: keyof AppData; label: string; allowEmpt
   { key: 'damages', label: 'damages', allowEmpty: true },
   { key: 'estimateVersions', label: 'estimateVersions', allowEmpty: true },
   { key: 'timeLogs', label: 'timeLogs', allowEmpty: true },
+  { key: 'subcontractAccounts', label: 'subcontractAccounts', allowEmpty: true },
+  { key: 'subcontractContacts', label: 'subcontractContacts', allowEmpty: true },
+  { key: 'jobSites', label: 'jobSites', allowEmpty: true },
+  { key: 'workOrders', label: 'workOrders', allowEmpty: true },
+  { key: 'subcontractDocuments', label: 'subcontractDocuments', allowEmpty: true },
 ]
 
 export function validateAppDataImport(input: unknown): { ok: true } | { ok: false; issues: AppDataValidationIssue[] } {
