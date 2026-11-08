@@ -81,5 +81,7 @@ describe('subcontractor workflow', () => {
     expect(canAdvanceWorkOrderStatus('New', 'Reviewed')).toBe(true)
     expect(canAdvanceWorkOrderStatus('New', 'In Progress')).toBe(false)
     expect(canAdvanceWorkOrderStatus('In Progress', 'Callback Required')).toBe(true)
+    expect(canAdvanceWorkOrderStatus('Callback Required', 'In Progress')).toBe(true)
+    expect(canAdvanceWorkOrderStatus('Callback Required', 'Paid')).toBe(false)
   })
 })
