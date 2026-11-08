@@ -95,7 +95,7 @@ export function getSubcontractFinancialSummary(data: AppData, accountId: string)
 export function getSubcontractDashboardSummary(data: AppData) {
   const workOrders = data.workOrders ?? []
   const readyForInvoice = workOrders.filter((workOrder) => workOrder.status === 'Ready for Invoice').length
-  const active = workOrders.filter((workOrder) => !['Completed', 'Closed', 'Cancelled', 'Paid'].includes(workOrder.status)).length
+  const active = workOrders.filter((workOrder) => !['Completed', 'Ready for Invoice', 'Invoiced', 'Partially Paid', 'Paid', 'Closed', 'Cancelled', 'On Hold', 'Disputed'].includes(workOrder.status)).length
   const callbacks = workOrders.filter((workOrder) => workOrder.status === 'Callback Required' || workOrder.callbackRequired).length
   const accountIds = new Set(workOrders.map((workOrder) => workOrder.accountId))
   const linkedJobIds = new Set(workOrders.map((workOrder) => workOrder.jobId).filter(Boolean) as string[])
