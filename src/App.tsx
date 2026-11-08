@@ -4,6 +4,7 @@ import './App.css';
 import { Dashboard } from './sections/Dashboard';
 import { Customers } from './sections/Customers';
 import { Companies } from './sections/Companies';
+import { SubcontractorDashboard } from './sections/SubcontractorDashboard';
 import { WorkOrders } from './sections/WorkOrders';
 import { Inspect } from './sections/Inspect';
 import { Jobs } from './sections/Jobs';
@@ -514,6 +515,7 @@ export default function App() {
       label: 'Main',
       items: [
         { key: 'dashboard', label: 'Dashboard', icon: <Home size={18} /> },
+        { key: 'subcontractor-dashboard', label: 'Subcontractor Operations', count: data.workOrders?.filter((order) => !['Completed', 'Closed', 'Cancelled', 'Paid'].includes(order.status)).length ?? 0, icon: <HardHat size={18} /> },
         { key: 'companies', label: 'Companies & Accounts', count: data.subcontractAccounts?.length ?? 0, icon: <Building2 size={18} /> },
         { key: 'work-orders', label: 'Work Orders', count: data.workOrders?.length ?? 0, icon: <ClipboardList size={18} /> },
         { key: 'crew-mode', label: 'Field Crew Mode', icon: <HardHat size={18} /> },
@@ -537,6 +539,7 @@ export default function App() {
   const activeView = navItems.find((item) => item.key === view);
   const activeViewDetail: Record<View, string> = {
     dashboard: 'Job board, roofing KPIs, crew schedule, weather, and activity.',
+    'subcontractor-dashboard': 'Manage incoming subcontract work, active work orders, partner accounts, and invoicing readiness.',
     companies: 'Manage subcontractor and partner company accounts, contacts, and account history.',
     'work-orders': 'Receive, review, schedule, assign, complete, and prepare subcontract work for invoicing.',
     customers: 'Manage homeowners, lead details, and property information.',
@@ -777,6 +780,7 @@ export default function App() {
             />
           )}
 
+          {view === 'subcontractor-dashboard' && <SubcontractorDashboard data={data} setView={setView} />}
           {view === 'companies' && <Companies data={data} setData={setData} />}
 
           {view === 'work-orders' && (
