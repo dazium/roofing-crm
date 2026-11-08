@@ -121,6 +121,7 @@ export function isInvoiceOutstanding(status: InvoiceStatus): boolean {
 export function canAdvanceWorkOrderStatus(current: WorkOrderStatus, next: WorkOrderStatus): boolean {
   if (current === next) return true
   if (['Cancelled', 'Disputed'].includes(current)) return false
+  if (current === 'Callback Required') return next === 'In Progress'
   if (['Callback Required'].includes(next)) return true
   const currentIndex = WORK_ORDER_STATUS_FLOW.indexOf(current)
   const nextIndex = WORK_ORDER_STATUS_FLOW.indexOf(next)
