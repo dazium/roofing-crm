@@ -12,7 +12,7 @@ export const SubcontractorDashboard: React.FC<SubcontractorDashboardProps> = ({ 
   const summary = getSubcontractDashboardSummary(data)
   const accounts = getSubcontractAccounts(data)
   const workOrders = data.workOrders ?? []
-  const activeOrders = workOrders.filter((order) => !['Completed', 'Closed', 'Cancelled', 'Paid'].includes(order.status))
+  const activeOrders = workOrders.filter((order) => !['Completed', 'Ready for Invoice', 'Invoiced', 'Partially Paid', 'Paid', 'Closed', 'Cancelled', 'On Hold', 'Disputed'].includes(order.status))
   const readyOrders = workOrders.filter((order) => order.status === 'Ready for Invoice')
   const accountName = (accountId: string) => accounts.find((account) => account.id === accountId)?.name ?? 'Unknown company'
   const crewName = (crewId?: string) => crewId ? data.crews.find((crew) => crew.id === crewId)?.name ?? 'Crew unavailable' : 'Unassigned'
