@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { BarChart3, CalendarDays, Camera, FileText, HardHat, Home, KanbanSquare, MapPin, Package, Settings as SettingsIcon, Truck, Users, Clock3, ClipboardPlus, ClipboardCheck, PackageCheck, FileSignature, ChartNoAxesCombined, Menu, X, Search, Plus, ClipboardList } from 'lucide-react';
+import { BarChart3, CalendarDays, Camera, FileText, HardHat, Home, KanbanSquare, MapPin, Package, Settings as SettingsIcon, Truck, Users, Clock3, ClipboardPlus, ClipboardCheck, PackageCheck, FileSignature, ChartNoAxesCombined, Building2, Menu, X, Search, Plus, ClipboardList } from 'lucide-react';
 import './App.css';
 import { Dashboard } from './sections/Dashboard';
 import { Customers } from './sections/Customers';
+import { Companies } from './sections/Companies';
+import { WorkOrders } from './sections/WorkOrders';
 import { Inspect } from './sections/Inspect';
 import { Jobs } from './sections/Jobs';
 import { Estimates } from './sections/Estimates';
@@ -512,9 +514,8 @@ export default function App() {
       label: 'Main',
       items: [
         { key: 'dashboard', label: 'Dashboard', icon: <Home size={18} /> },
-        { key: 'crew-mode', label: 'Subcontractor Operations', icon: <HardHat size={18} /> },
-        { key: 'customers', label: 'Companies & Accounts', count: data.customers.length, icon: <Users size={18} /> },
-        { key: 'jobs', label: 'Work Orders', count: data.jobs.length, icon: <KanbanSquare size={18} /> },
+        { key: 'companies', label: 'Companies & Accounts', count: data.subcontractAccounts?.length ?? 0, icon: <Building2 size={18} /> },
+        { key: 'work-orders', label: 'Work Orders', count: data.workOrders?.length ?? 0, icon: <ClipboardList size={18} /> },
         { key: 'crew-mode', label: 'Field Crew Mode', icon: <HardHat size={18} /> },
         { key: 'customers', label: 'Direct Customers', count: data.customers.length, icon: <Users size={18} /> },
         { key: 'jobs', label: 'Projects', count: data.jobs.length, icon: <KanbanSquare size={18} /> },
@@ -536,6 +537,8 @@ export default function App() {
   const activeView = navItems.find((item) => item.key === view);
   const activeViewDetail: Record<View, string> = {
     dashboard: 'Job board, roofing KPIs, crew schedule, weather, and activity.',
+    companies: 'Manage subcontractor and partner company accounts, contacts, and account history.',
+    'work-orders': 'Receive, review, schedule, assign, complete, and prepare subcontract work for invoicing.',
     customers: 'Manage homeowners, lead details, and property information.',
     jobs: 'Track projects from scheduled work to close-out.',
     photos: 'Capture before, damage, progress, and after photo documentation.',
@@ -771,6 +774,18 @@ export default function App() {
                 selectJob(jobId);
               }}
               onOpenEstimates={() => setView('estimates')}
+            />
+          )}
+
+          {view === 'companies' && <Companies data={data} setData={setData} />}
+
+          {view === 'work-orders' && (
+            <WorkOrders
+              data={data}
+              setData={setData}
+              selectedJobId={selectedJobId}
+              selectJob={selectJob}
+              setView={setView}
             />
           )}
 
