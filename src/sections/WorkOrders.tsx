@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { AppData, JobSite, View, WorkOrder, WorkOrderStatus } from '../types'
-import { canAdvanceWorkOrderStatus, getSubcontractAccounts, WORK_ORDER_STATUS_FLOW } from '../subcontractor'
+import { canAdvanceWorkOrderStatus, WORK_ORDER_STATUS_FLOW } from '../subcontractor'
 
 type WorkOrdersProps = {
   data: AppData
@@ -17,8 +17,8 @@ const INITIAL_FORM: Partial<WorkOrder> = {
 const INITIAL_SITE: Partial<JobSite> = { address: '', propertyType: 'Residential', siteContact: '', sitePhone: '', accessInstructions: '', parkingInformation: '', roofInformation: '', safetyHazards: '', requiredEquipment: '', notes: '' }
 
 export const WorkOrders: React.FC<WorkOrdersProps> = ({ data, setData, selectedJobId, selectJob, setView }) => {
-  const accounts = getSubcontractAccounts(data)
-  const workOrders = data.workOrders ?? []
+  const accounts = useMemo(() => data.subcontractAccounts ?? [], [data.subcontractAccounts])
+  const workOrders = useMemo(() => data.workOrders ?? [], [data.workOrders])
   const sites = data.jobSites ?? []
   const documents = data.subcontractDocuments ?? []
   const [selectedId, setSelectedId] = useState(workOrders[0]?.id ?? null)

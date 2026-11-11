@@ -12,7 +12,7 @@ const CONTACT_ROLES: SubcontractorContactRole[] = [
 ]
 
 export const Companies: React.FC<CompaniesProps> = ({ data, setData }) => {
-  const accounts = data.subcontractAccounts ?? []
+  const accounts = useMemo(() => data.subcontractAccounts ?? [], [data.subcontractAccounts])
   const [selectedId, setSelectedId] = useState(accounts[0]?.id ?? null)
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
