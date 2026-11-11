@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BarChart3, CalendarDays, Camera, FileText, HardHat, Home, KanbanSquare, MapPin, Package, Settings as SettingsIcon, Truck, Users, Clock3, ClipboardPlus, ClipboardCheck, PackageCheck, FileSignature, ChartNoAxesCombined, Building2, Menu, X, Search, Plus, ClipboardList } from 'lucide-react';
+import { BarChart3, CalendarDays, Camera, FileText, HardHat, Home, KanbanSquare, MapPin, Package, Truck, Users, Clock3, FileSignature, ChartNoAxesCombined, Building2, Menu, X, Search, Plus, ClipboardList } from 'lucide-react';
 import './App.css';
 import { Dashboard } from './sections/Dashboard';
 import { Customers } from './sections/Customers';
@@ -505,8 +505,6 @@ export default function App() {
     setData(nextData);
     selectCustomer(selectedCustomerId, nextData);
   }
-
-  const totalPhotos = data.inspections.reduce((sum, inspection) => sum + inspection.photos.length, 0);
 
   type NavItem = { key: View; label: string; count?: number; child?: boolean; icon: React.ReactNode };
   type NavGroup = { label: string; items: NavItem[] };
